@@ -26,23 +26,6 @@ DATA_DIR = os.path.join(
 )
 
 
-# 检查是否是群主
-def is_group_owner(role):
-    return role == "owner"
-
-
-# 检查是否是管理员
-def is_group_admin(role):
-    return role == "admin"
-
-
-# 检查是否有权限（管理员、群主或root管理员）
-def is_authorized(role, user_id):
-    is_admin = is_group_admin(role)
-    is_owner = is_group_owner(role)
-    return (is_admin or is_owner) or (user_id in owner_id)
-
-
 # 查看功能开关状态
 def load_function_status(group_id):
     return load_switch(group_id, "function_status")
