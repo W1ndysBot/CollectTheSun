@@ -201,7 +201,8 @@ async def sun_menu(websocket, group_id, message_id):
 收集雨水：收集雨水 或 rain
 查看信息：查看信息 或 suninfo
 阳光排行榜：阳光排行榜 或 sunrank
-想加新玩法或建议，联系https://blog.w1ndys.top/html/QQ.html"""
+想加新玩法或建议或bug反馈
+联系https://blog.w1ndys.top/html/QQ.html"""
     await send_group_msg(websocket, group_id, content)
 
 
