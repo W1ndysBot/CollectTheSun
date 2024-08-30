@@ -406,19 +406,21 @@ async def handle_CollectTheSun_group_message(websocket, msg):
 
         if raw_message == "收集阳光" or raw_message == "sun":
             await collect_sun(websocket, group_id, user_id, message_id)
+            await set_group_ban(websocket, group_id, user_id, 10)
             return
 
         if raw_message == "收集雨水" or raw_message == "rain":
             await collect_rain(websocket, group_id, user_id, message_id)
+            await set_group_ban(websocket, group_id, user_id, 10)
             return
 
         if raw_message == "查看信息" or raw_message == "suninfo":
             await check_info(websocket, group_id, user_id, message_id)
             return
 
-        if raw_message == "阳光排行榜" or raw_message == "sunrank":
-            await sun_rank(websocket, group_id, user_id, message_id)
-            return
+        # if raw_message == "阳光排行榜" or raw_message == "sunrank":
+        #     await sun_rank(websocket, group_id, user_id, message_id)
+        #     return
 
         # 如果不是上述命令，进入每句话随机添加函数
         await random_add(websocket, group_id, user_id, message_id)
