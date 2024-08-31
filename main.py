@@ -86,7 +86,7 @@ def load_user_rain(group_id, user_id):
     return result[0] if result else 0
 
 
-# 读取上次操作时间
+# 读取上次sun或rain操作时间
 def load_user_last_operation_time(group_id, user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -190,61 +190,74 @@ def load_all_rain():
 
 # 更新用户在某群的阳光
 def update_sun(group_id, user_id, sun_count):
-    current_sun_count = load_user_sun(group_id, user_id)
-    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
+
+    current_time = load_user_last_operation_time(
+        group_id, user_id
+    )  # 获取上次sun或rain操作时间
     time = datetime.datetime.now()
-    is_join = load_user_join_event(group_id, user_id)
-    total_sun_count = current_sun_count + sun_count
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-        (
-            group_id,
-            user_id,
-            total_sun_count,
-            current_rain_count,
-            time,
-            is_join,
-        ),  # 保持雨水数量不变
-    )
-    conn.commit()
-    conn.close()
+    if current_time is None or (time - current_time).seconds > 30:
+        current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
+        current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
+        is_join = load_user_join_event(group_id, user_id)
+        total_sun_count = current_sun_count + sun_count
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                group_id,
+                user_id,
+                total_sun_count,
+                current_rain_count,
+                time,
+                is_join,
+            ),  # 保持雨水数量不变
+        )
+        conn.commit()
+        conn.close()
 
 
 # 更新用户在某群的雨水
 def update_rain(group_id, user_id, rain_count):
-    current_rain_count = load_user_rain(group_id, user_id)
-    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
+    current_time = load_user_last_operation_time(
+        group_id, user_id
+    )  # 获取上次sun或rain操作时间
     time = datetime.datetime.now()
-    is_join = load_user_join_event(group_id, user_id)
-    total_rain_count = current_rain_count + rain_count
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-        (
-            group_id,
-            user_id,
-            current_sun_count,
-            total_rain_count,
-            time,
-            is_join,
-        ),  # 保持阳光数量不变
-    )
-    conn.commit()
-    conn.close()
+    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
+    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
+    if current_time is None or (time - current_time).seconds > 30:
+        is_join = load_user_join_event(group_id, user_id)
+        total_rain_count = current_rain_count + rain_count
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                group_id,
+                user_id,
+                current_sun_count,
+                total_rain_count,
+                time,
+                is_join,
+            ),  # 保持阳光数量不变
+        )
+        conn.commit()
+        conn.close()
 
 
 # 加入奇遇
 def join_event(group_id, user_id):
-    current_rain_count = load_user_rain(group_id, user_id)
+    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
+
+    # 获取上次sun或rain操作时间
+    current_time = load_user_last_operation_time(group_id, user_id)
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, is_join) VALUES (?, ?, ?, ?, ?)",
-        (group_id, user_id, current_sun_count, current_rain_count, True),
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+        (group_id, user_id, current_sun_count, current_rain_count, current_time, True),
     )
     conn.commit()
     conn.close()
