@@ -49,6 +49,8 @@ def init_database():
                 user_id TEXT NOT NULL,
                 sun_count INTEGER NOT NULL DEFAULT 0,
                 rain_count INTEGER NOT NULL DEFAULT 0,
+                time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_join BOOLEAN NOT NULL DEFAULT FALSE,
                 UNIQUE(user_id, group_id)
             )
         """
@@ -82,6 +84,32 @@ def load_user_rain(group_id, user_id):
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else 0
+
+
+# 读取上次操作时间
+def load_user_last_operation_time(group_id, user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT time FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+        (group_id, user_id),
+    )
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
+
+# 读取奇遇状态
+def load_user_join_event(group_id, user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT is_join FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+        (group_id, user_id),
+    )
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else False
 
 
 # 读取用户所有群的阳光，求和
@@ -164,12 +192,21 @@ def load_all_rain():
 def update_sun(group_id, user_id, sun_count):
     current_sun_count = load_user_sun(group_id, user_id)
     current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
+    time = datetime.datetime.now()
+    is_join = load_user_join_event(group_id, user_id)
     total_sun_count = current_sun_count + sun_count
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count) VALUES (?, ?, ?, ?)",
-        (group_id, user_id, total_sun_count, current_rain_count),  # 保持雨水数量不变
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            group_id,
+            user_id,
+            total_sun_count,
+            current_rain_count,
+            time,
+            is_join,
+        ),  # 保持雨水数量不变
     )
     conn.commit()
     conn.close()
@@ -179,12 +216,21 @@ def update_sun(group_id, user_id, sun_count):
 def update_rain(group_id, user_id, rain_count):
     current_rain_count = load_user_rain(group_id, user_id)
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
+    time = datetime.datetime.now()
+    is_join = load_user_join_event(group_id, user_id)
     total_rain_count = current_rain_count + rain_count
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count) VALUES (?, ?, ?, ?)",
-        (group_id, user_id, current_sun_count, total_rain_count),  # 保持阳光数量不变
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            group_id,
+            user_id,
+            current_sun_count,
+            total_rain_count,
+            time,
+            is_join,
+        ),  # 保持阳光数量不变
     )
     conn.commit()
     conn.close()
@@ -192,11 +238,26 @@ def update_rain(group_id, user_id, rain_count):
 
 # 加入奇遇
 def join_event(group_id, user_id):
+    current_rain_count = load_user_rain(group_id, user_id)
+    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count) VALUES (?, ?, ?, ?)",
-        (group_id, user_id, 0, 0),
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, is_join) VALUES (?, ?, ?, ?, ?)",
+        (group_id, user_id, current_sun_count, current_rain_count, True),
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+# 退出奇遇
+def quit_event(group_id, user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, is_join) VALUES (?, ?, ?)",
+        (group_id, user_id, False),
     )
     conn.commit()
     conn.close()
@@ -213,6 +274,7 @@ async def sun_menu(websocket, group_id, message_id):
 收集雨水：收集雨水 或 rain
 查看信息：查看信息 或 suninfo
 加入奇遇：加入奇遇 或 sunjoin
+退出奇遇：退出奇遇 或 sunquit
 阳光排行榜：阳光排行榜 或 sunrank
 想加新玩法或建议或bug反馈
 联系https://blog.w1ndys.top/html/QQ.html"""
@@ -306,8 +368,8 @@ def get_top_three_group_sun():
 async def check_info(websocket, group_id, user_id, message_id):
     content = (
         f"[CQ:reply,id={message_id}]"
-        f"你在本群收集阳光：{load_user_sun(group_id, user_id)}，收集雨水：{load_user_rain(group_id, user_id)}，有效阳光：{load_user_sun(group_id, user_id) - load_user_rain(group_id, user_id)}\n"
-        f"你共收集阳光：{load_user_all_sun(user_id)}，收集雨水：{load_user_all_rain(user_id)}，有效阳光：{load_user_all_sun(user_id) - load_user_all_rain(user_id)}\n"
+        f"在本群收集阳光：{load_user_sun(group_id, user_id)}，收集雨水：{load_user_rain(group_id, user_id)}，有效阳光：{load_user_sun(group_id, user_id) - load_user_rain(group_id, user_id)}\n"
+        f"你总共收集阳光：{load_user_all_sun(user_id)}，收集雨水：{load_user_all_rain(user_id)}，有效阳光：{load_user_all_sun(user_id) - load_user_all_rain(user_id)}\n"
         f"本群总收集阳光：{load_group_all_sun(group_id)}，收集雨水：{load_group_all_rain(group_id)}，有效阳光：{load_group_all_sun(group_id) - load_group_all_rain(group_id)}\n"
         f"全服总收集阳光：{load_all_sun()}，收集雨水：{load_all_rain()}，有效阳光：{load_all_sun() - load_all_rain()}"
     )
@@ -371,26 +433,32 @@ async def random_add(websocket, group_id, user_id, message_id):
         "你在暴打W1ndys的时候找到了",
     ]
 
-    if random.random() < 0.05:
-        sun_count = random.randint(0, 20)
-        event = random.choice(events)
-        if random.random() < 0.5:  # 百分之五十的概率收集阳光
-            update_sun(group_id, user_id, sun_count)
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]{event}{sun_count}颗阳光，祝24级新生军训愉快！",
-            )
-            logging.info(f"触发奇遇事件，{user_id}在{group_id}添加{sun_count}颗阳光")
+    # 检测是否在奇遇事件中
+    if load_user_join_event(group_id, user_id):
+        if random.random() < 1:
+            sun_count = random.randint(0, 20)
+            event = random.choice(events)
+            if random.random() < 0.5:  # 百分之五十的概率收集阳光
+                update_sun(group_id, user_id, sun_count)
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]{event}{sun_count}颗阳光，祝24级新生军训愉快！",
+                )
+                logging.info(
+                    f"触发奇遇事件，{user_id}在{group_id}添加{sun_count}颗阳光"
+                )
 
-        else:  # 百分之五十的概率收集雨水
-            update_rain(group_id, user_id, sun_count)
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]{event}{sun_count}滴雨水，祝24级新生军训愉快！",
-            )
-            logging.info(f"触发奇遇事件，{user_id}在{group_id}添加{sun_count}滴雨水")
+            else:  # 百分之五十的概率收集雨水
+                update_rain(group_id, user_id, sun_count)
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]{event}{sun_count}滴雨水，祝24级新生军训愉快！",
+                )
+                logging.info(
+                    f"触发奇遇事件，{user_id}在{group_id}添加{sun_count}滴雨水"
+                )
 
 
 # 群消息处理函数
@@ -431,11 +499,29 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             await check_info(websocket, group_id, user_id, message_id)
             return
 
+        if raw_message == "加入奇遇" or raw_message == "sunjoin":
+            if join_event(group_id, user_id):
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]你已成功加入奇遇，你在本群的每句话都有 1% 的概率触发奇遇事件！",
+                )
+            return
+
+        if raw_message == "退出奇遇" or raw_message == "sunquit":
+            if quit_event(group_id, user_id):
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]你已成功退出奇遇",
+                )
+            return
+
         # if raw_message == "阳光排行榜" or raw_message == "sunrank":
         #     await sun_rank(websocket, group_id, user_id, message_id)
         #     return
 
-        # 如果不是上述命令，进入每句话随机添加函数
+        # 如果不是上述命令，进入奇遇事件
         await random_add(websocket, group_id, user_id, message_id)
         return
 
