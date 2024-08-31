@@ -190,16 +190,29 @@ def update_rain(group_id, user_id, rain_count):
     conn.close()
 
 
+# 加入奇遇
+def join_event(group_id, user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count) VALUES (?, ?, ?, ?)",
+        (group_id, user_id, 0, 0),
+    )
+    conn.commit()
+    conn.close()
+
+
 # 菜单
 async def sun_menu(websocket, group_id, message_id):
     content = f"""[CQ:reply,id={message_id}]来为 24 级新生收集阳光吧！每次收集阳光或雨水，都会随机增加 0-50 阳光或雨水。阳光减去雨水为有效阳光。本玩法为限时娱乐玩法，适度娱乐，切勿当真。数据全服互通，你的数据将会基于所有群聊的数据结算，切勿频繁刷分喔，否则会被关进小黑屋，玩法将于 9 月 14 日 0 点军训结束准时关服。排行榜也是全服实时结算，偷偷告诉你，这是 W1ndys 第一次写全服互通的玩法，快来看看他有没有写出愚蠢的 bug。
-特殊玩法：奇遇事件，群里的每一条消息都有 1% 的概率触发奇遇事件并收集 0-20 阳光或雨水（作者脑子已经炸了）。
+特殊玩法：奇遇事件，加入奇遇后群里的每一条消息都有 1% 的概率触发奇遇事件并收集 0-20 阳光或雨水（作者脑子已经炸了）。
 
 
 收集阳光指令列表：
 收集阳光：收集阳光 或 sun
 收集雨水：收集雨水 或 rain
 查看信息：查看信息 或 suninfo
+加入奇遇：加入奇遇 或 sunjoin
 阳光排行榜：阳光排行榜 或 sunrank
 想加新玩法或建议或bug反馈
 联系https://blog.w1ndys.top/html/QQ.html"""
@@ -293,10 +306,10 @@ def get_top_three_group_sun():
 async def check_info(websocket, group_id, user_id, message_id):
     content = (
         f"[CQ:reply,id={message_id}]"
-        f"你在本群收集阳光：{load_user_sun(group_id, user_id)}个，收集雨水：{load_user_rain(group_id, user_id)}个，有效阳光：{load_user_sun(group_id, user_id) - load_user_rain(group_id, user_id)}个\n"
-        f"你共收集阳光：{load_user_all_sun(user_id)}个，收集雨水：{load_user_all_rain(user_id)}个，有效阳光：{load_user_all_sun(user_id) - load_user_all_rain(user_id)}个\n"
-        f"本群总收集阳光：{load_group_all_sun(group_id)}个，收集雨水：{load_group_all_rain(group_id)}个，有效阳光：{load_group_all_sun(group_id) - load_group_all_rain(group_id)}个\n"
-        f"全服总收集阳光：{load_all_sun()}个，收集雨水：{load_all_rain()}个，有效阳光：{load_all_sun() - load_all_rain()}个"
+        f"你在本群收集阳光：{load_user_sun(group_id, user_id)}，收集雨水：{load_user_rain(group_id, user_id)}，有效阳光：{load_user_sun(group_id, user_id) - load_user_rain(group_id, user_id)}\n"
+        f"你共收集阳光：{load_user_all_sun(user_id)}，收集雨水：{load_user_all_rain(user_id)}，有效阳光：{load_user_all_sun(user_id) - load_user_all_rain(user_id)}\n"
+        f"本群总收集阳光：{load_group_all_sun(group_id)}，收集雨水：{load_group_all_rain(group_id)}，有效阳光：{load_group_all_sun(group_id) - load_group_all_rain(group_id)}\n"
+        f"全服总收集阳光：{load_all_sun()}，收集雨水：{load_all_rain()}，有效阳光：{load_all_sun() - load_all_rain()}"
     )
     await send_group_msg(websocket, group_id, content)
 
