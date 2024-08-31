@@ -435,8 +435,8 @@ async def random_add(websocket, group_id, user_id, message_id):
 
     # 检测是否在奇遇事件中
     if load_user_join_event(group_id, user_id):
-        if random.random() < 1:
-            sun_count = random.randint(0, 20)
+        if random.random() < 0.1:
+            sun_count = random.randint(50, 100)
             event = random.choice(events)
             if random.random() < 0.5:  # 百分之五十的概率收集阳光
                 update_sun(group_id, user_id, sun_count)
