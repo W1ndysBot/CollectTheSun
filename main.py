@@ -197,7 +197,7 @@ def update_sun(group_id, user_id, sun_count):
         group_id, user_id
     )  # 获取上次sun或rain操作时间
     time = datetime.datetime.now().replace(microsecond=0)
-    if current_time is None or (time - current_time).seconds > 30:
+    if current_time is None or (time - current_time).seconds > 60:
         current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
         current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
         is_join = load_user_join_event(group_id, user_id)
@@ -220,7 +220,7 @@ def update_sun(group_id, user_id, sun_count):
         return True
     else:
         logging.info(
-            f"用户{user_id}在{group_id}的阳光操作时间小于30秒,无法操作，还剩{30 - (time - current_time).seconds}秒"
+            f"用户{user_id}在{group_id}的阳光操作时间小于30秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
         )
         return False
 
@@ -233,7 +233,7 @@ def update_rain(group_id, user_id, rain_count):
     time = datetime.datetime.now().replace(microsecond=0)
     current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-    if current_time is None or (time - current_time).seconds > 30:
+    if current_time is None or (time - current_time).seconds > 60:
         is_join = load_user_join_event(group_id, user_id)
         total_rain_count = current_rain_count + rain_count
         conn = sqlite3.connect(DB_PATH)
@@ -254,7 +254,7 @@ def update_rain(group_id, user_id, rain_count):
         return True
     else:
         logging.info(
-            f"用户{user_id}在{group_id}的雨水操作时间小于30秒,无法操作，还剩{30 - (time - current_time).seconds}秒"
+            f"用户{user_id}在{group_id}的雨水操作时间小于30秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
         )
         return False
 
@@ -332,7 +332,7 @@ async def collect_sun(websocket, group_id, user_id, message_id):
         await send_group_msg(
             websocket,
             group_id,
-            f"[CQ:reply,id={message_id}]本次收集了{sun_count}颗阳光,祝24级新生军训愉快！\n"
+            f"[CQ:reply,id={message_id}]本次收集了{sun_count}颗阳光,祝24级新生军训愉快(冷却60秒)！\n"
             f"——————————\n"
             f'发送"suninfo"查看信息,发送"sunrank"查看阳光排行榜,发送"sunmenu"查看所有命令',
         )
@@ -355,7 +355,7 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         await send_group_msg(
             websocket,
             group_id,
-            f"[CQ:reply,id={message_id}]本次收集了{rain_count}滴雨水,祝24级新生军训愉快！\n"
+            f"[CQ:reply,id={message_id}]本次收集了{rain_count}滴雨水,祝24级新生军训愉快(冷却60秒)！\n"
             f"——————————\n"
             f'发送"suninfo"查看信息,发送"sunrank"查看阳光排行榜,发送"sunmenu"查看所有命令',
         )
@@ -466,11 +466,6 @@ async def random_add(websocket, group_id, user_id, message_id):
         "你在背公式的时候找到了",
         "你在写代码找到了",
         "你在暴打W1ndys的时候找到了",
-        "你在暴打W1ndys的时候找到了",
-        "你在暴打W1ndys的时候找到了",
-        "你在暴打W1ndys的时候找到了",
-        "你在暴打W1ndys的时候找到了",
-        "你在暴打W1ndys的时候找到了",
     ]
 
     # 检测是否在奇遇事件中
@@ -483,7 +478,7 @@ async def random_add(websocket, group_id, user_id, message_id):
                     await send_group_msg(
                         websocket,
                         group_id,
-                        f"[CQ:reply,id={message_id}]{event}{sun_count}颗阳光,祝24级新生军训愉快！",
+                        f"[CQ:reply,id={message_id}]{event}{sun_count}颗阳光,祝24级新生军训愉快(冷却60秒)！",
                     )
                     # logging.info(f"触发奇遇事件,{user_id}在{group_id}添加{sun_count}颗阳光")
 
@@ -492,7 +487,7 @@ async def random_add(websocket, group_id, user_id, message_id):
                     await send_group_msg(
                         websocket,
                         group_id,
-                        f"[CQ:reply,id={message_id}]{event}{sun_count}滴雨水,祝24级新生军训愉快！",
+                        f"[CQ:reply,id={message_id}]{event}{sun_count}滴雨水,祝24级新生军训愉快(冷却60秒)！",
                     )
                     # logging.info(f"触发奇遇事件,{user_id}在{group_id}添加{sun_count}滴雨水")
 
@@ -520,7 +515,12 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             await sun_menu(websocket, group_id, message_id)
             return
 
-        if raw_message == "收集阳光" or raw_message == "sun":
+        if (
+            raw_message == "收集阳光"
+            or raw_message == "sun"
+            or raw_message == "啦啦啦种太阳"
+            or raw_message == "种太阳"
+        ):
             await collect_sun(websocket, group_id, user_id, message_id)
             return
 
