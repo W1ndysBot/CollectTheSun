@@ -327,7 +327,7 @@ async def collect_sun(websocket, group_id, user_id, message_id):
         )
         return
 
-    sun_count = random.randint(0, 50)
+    sun_count = random.randint(1, 500)
     if update_sun(group_id, user_id, sun_count):
         await send_group_msg(
             websocket,
@@ -350,7 +350,7 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         )
         return
 
-    rain_count = random.randint(1, 50)
+    rain_count = random.randint(1, 500)
     if update_rain(group_id, user_id, rain_count):
         await send_group_msg(
             websocket,
@@ -475,8 +475,8 @@ async def random_add(websocket, group_id, user_id, message_id):
 
     # 检测是否在奇遇事件中
     if load_user_join_event(group_id, user_id):
-        if random.random() < 0.1:
-            sun_count = random.randint(50, 100)
+        if random.random() < 0.05:
+            sun_count = random.randint(500, 1000)
             event = random.choice(events)
             if random.random() < 0.5:  # 百分之五十的概率收集阳光
                 if update_sun(group_id, user_id, sun_count):
