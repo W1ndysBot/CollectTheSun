@@ -329,13 +329,13 @@ async def collect_sun(websocket, group_id, user_id, message_id):
         return
 
     chance = random.random()
-    if chance < 0.05:  # 5% 概率大量收集
+    if chance < 0.1:  # 10% 概率大量收集
         sun_count = random.randint(5000, 10000)
         message = f"运气爆棚！大量收集了{sun_count}颗阳光"
-    elif chance < 0.6:  # 55% 概率正常收集
+    elif chance < 0.7:  # 60% 概率正常收集
         sun_count = random.randint(1, 1000)
         message = f"收集了{sun_count}颗阳光"
-    else:  # 40% 概率减少阳光
+    else:  # 30% 概率减少阳光
         sun_count = -random.randint(1000, 5000)
         message = f"倒霉蛋，你丢了{-sun_count}颗阳光"
 
@@ -362,13 +362,13 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         return
 
     chance = random.random()
-    if chance < 0.05:  # 5% 概率大量收集
+    if chance < 0.1:  # 10% 概率大量收集
         rain_count = random.randint(5000, 10000)
         message = f"运气爆棚！大量收集了{rain_count}滴雨水"
-    elif chance < 0.6:  # 55% 概率正常收集
+    elif chance < 0.7:  # 60% 概率正常收集
         rain_count = random.randint(1, 1000)
         message = f"收集了{rain_count}滴雨水"
-    else:  # 40% 概率减少雨水
+    else:  # 30% 概率减少雨水
         rain_count = -random.randint(1000, 5000)
         message = f"倒霉蛋，你丢了{-rain_count}滴雨水"
 
