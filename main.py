@@ -328,12 +328,22 @@ async def collect_sun(websocket, group_id, user_id, message_id):
         )
         return
 
-    sun_count = random.randint(1, 500)
+    chance = random.random()
+    if chance < 0.05:  # 5% 概率大量收集
+        sun_count = random.randint(5000, 10000)
+        message = f"运气爆棚！大量收集了{sun_count}颗阳光"
+    elif chance < 0.6:  # 55% 概率正常收集
+        sun_count = random.randint(1, 1000)
+        message = f"收集了{sun_count}颗阳光"
+    else:  # 40% 概率减少阳光
+        sun_count = -random.randint(1000, 5000)
+        message = f"倒霉蛋，你丢了{-sun_count}颗阳光"
+
     if update_sun(group_id, user_id, sun_count):
         await send_group_msg(
             websocket,
             group_id,
-            f"[CQ:reply,id={message_id}]本次收集了{sun_count}颗阳光,祝24级新生军训愉快(冷却60秒)！\n"
+            f"[CQ:reply,id={message_id}]{message},祝24级新生军训愉快(冷却60秒)！\n"
             f"——————————\n"
             f'发送"suninfo"查看信息,发送"sunrank"查看阳光排行榜,发送"sunmenu"查看所有命令',
         )
@@ -351,12 +361,22 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         )
         return
 
-    rain_count = random.randint(1, 500)
+    chance = random.random()
+    if chance < 0.05:  # 5% 概率大量收集
+        rain_count = random.randint(5000, 10000)
+        message = f"运气爆棚！大量收集了{rain_count}滴雨水"
+    elif chance < 0.6:  # 55% 概率正常收集
+        rain_count = random.randint(1, 1000)
+        message = f"收集了{rain_count}滴雨水"
+    else:  # 40% 概率减少雨水
+        rain_count = -random.randint(1000, 5000)
+        message = f"倒霉蛋，你丢了{-rain_count}滴雨水"
+
     if update_rain(group_id, user_id, rain_count):
         await send_group_msg(
             websocket,
             group_id,
-            f"[CQ:reply,id={message_id}]本次收集了{rain_count}滴雨水,祝24级新生军训愉快(冷却60秒)！\n"
+            f"[CQ:reply,id={message_id}]{message},祝24级新生军训愉快(冷却60秒)！\n"
             f"——————————\n"
             f'发送"suninfo"查看信息,发送"sunrank"查看阳光排行榜,发送"sunmenu"查看所有命令',
         )
