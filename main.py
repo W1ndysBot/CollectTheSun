@@ -310,6 +310,7 @@ async def sun_menu(websocket, group_id, message_id):
 加入奇遇:加入奇遇 或 sunjoin
 退出奇遇:退出奇遇 或 sunquit
 阳光排行榜:阳光排行榜 或 sunrank
+雨水排行榜:雨水排行榜 或 rainrank
 想加新玩法或建议或bug反馈
 联系https://blog.w1ndys.top/html/QQ.html"""
     await send_group_msg(websocket, group_id, content)
@@ -398,6 +399,43 @@ def get_top_three_group_sun():
     return result
 
 
+# 获取本群雨水最多的前三个用户
+def get_top_three_rain(group_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT user_id, rain_count FROM collect_the_sun WHERE group_id = ? ORDER BY rain_count DESC LIMIT 3",
+        (group_id,),
+    )
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+
+# 获取全服雨水最多的前三个用户
+def get_top_three_rain_all():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT user_id, rain_count FROM collect_the_sun ORDER BY rain_count DESC LIMIT 3",
+    )
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+
+# 获取总雨水最多的前三个群
+def get_top_three_group_rain():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT group_id, SUM(rain_count) as total_rain FROM collect_the_sun GROUP BY group_id ORDER BY total_rain DESC LIMIT 3",
+    )
+    result = cursor.fetchall()
+    conn.close()
+    return result
+
+
 # 查看信息
 async def check_info(websocket, group_id, user_id, message_id):
     content = (
@@ -431,6 +469,24 @@ async def sun_rank(websocket, group_id, message_id):
     for rank, (group_id_in_db, sun_count) in enumerate(top_three_group_sun, 1):
         content += f"{rank}. <{group_id_in_db}>: {sun_count}阳光\n"
     logging.debug(f"群号:{group_id}")
+    await send_group_msg(websocket, group_id, content)
+
+
+# 雨水排行榜
+async def rain_rank(websocket, group_id, message_id):
+    top_three_rain = get_top_three_rain(group_id)
+    top_three_rain_all = get_top_three_rain_all()
+    top_three_group_rain = get_top_three_group_rain()
+    content = f"[CQ:reply,id={message_id}]"
+    content += f"本群雨水前三的用户:\n"
+    for rank, (user_id, rain_count) in enumerate(top_three_rain, 1):
+        content += f"{rank}. <{user_id}>: {rain_count}雨水\n"
+    content += f"\n全服雨水前三的用户:\n"
+    for rank, (user_id, rain_count) in enumerate(top_three_rain_all, 1):
+        content += f"{rank}. <{user_id}>: {rain_count}雨水\n"
+    content += f"\n全服雨水最多的群:\n"
+    for rank, (group_id_in_db, rain_count) in enumerate(top_three_group_rain, 1):
+        content += f"{rank}. <{group_id_in_db}>: {rain_count}雨水\n"
     await send_group_msg(websocket, group_id, content)
 
 
@@ -552,6 +608,10 @@ async def handle_CollectTheSun_group_message(websocket, msg):
 
         if raw_message == "阳光排行榜" or raw_message == "sunrank":
             await sun_rank(websocket, group_id, message_id)
+            return
+
+        if raw_message == "雨水排行榜" or raw_message == "rainrank":
+            await rain_rank(websocket, group_id, message_id)
             return
 
         # 如果不是上述命令,进入奇遇事件
