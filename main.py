@@ -318,7 +318,6 @@ async def sun_menu(websocket, group_id, message_id):
 
 # 随机收集阳光
 async def collect_sun(websocket, group_id, user_id, message_id):
-
     # 检测日期
     if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
         await send_group_msg(
@@ -328,16 +327,20 @@ async def collect_sun(websocket, group_id, user_id, message_id):
         )
         return
 
+    current_sun_count = load_user_sun(group_id, user_id)
     chance = random.random()
+
+    # 根据当前阳光数量使用不同的计算函数
     if chance < 0.15:  # 15% 概率大量收集
-        sun_count = random.randint(5000, 10000)
+        sun_count = int(current_sun_count * random.uniform(0.5, 1.0)) + random.randint(
+            1000, 5000
+        )
         message = f"运气爆棚！大量收集了{sun_count}颗阳光"
-    elif chance < 0.75:  # 60% 概率正常收集
-        sun_count = random.randint(1, 1000)
+    else:  # 85% 概率正常收集
+        sun_count = int(current_sun_count * random.uniform(0.1, 0.3)) + random.randint(
+            500, 2000
+        )
         message = f"收集了{sun_count}颗阳光"
-    else:  # 30% 概率减少阳光
-        sun_count = -random.randint(1000, 5000)
-        message = f"倒霉蛋，你丢了{-sun_count}颗阳光"
 
     if update_sun(group_id, user_id, sun_count):
         await send_group_msg(
@@ -351,7 +354,6 @@ async def collect_sun(websocket, group_id, user_id, message_id):
 
 # 随机收集雨水
 async def collect_rain(websocket, group_id, user_id, message_id):
-
     # 检测日期
     if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
         await send_group_msg(
@@ -361,16 +363,20 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         )
         return
 
+    current_rain_count = load_user_rain(group_id, user_id)
     chance = random.random()
+
+    # 根据当前雨水数量使用不同的计算函数
     if chance < 0.15:  # 15% 概率大量收集
-        rain_count = random.randint(5000, 10000)
+        rain_count = int(
+            current_rain_count * random.uniform(0.5, 1.0)
+        ) + random.randint(1000, 5000)
         message = f"运气爆棚！大量收集了{rain_count}滴雨水"
-    elif chance < 0.75:  # 60% 概率正常收集
-        rain_count = random.randint(1, 1000)
+    else:  # 85% 概率正常收集
+        rain_count = int(
+            current_rain_count * random.uniform(0.1, 0.3)
+        ) + random.randint(500, 2000)
         message = f"收集了{rain_count}滴雨水"
-    else:  # 25% 概率减少雨水
-        rain_count = -random.randint(1000, 5000)
-        message = f"倒霉蛋，你丢了{-rain_count}滴雨水"
 
     if update_rain(group_id, user_id, rain_count):
         await send_group_msg(
