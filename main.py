@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import re
 
 import datetime
 import random
@@ -192,7 +193,6 @@ def load_all_rain():
 
 # 更新用户在某群的阳光
 def update_sun(group_id, user_id, sun_count):
-
     current_time = load_user_last_operation_time(
         group_id, user_id
     )  # 获取上次sun或rain操作时间
@@ -201,7 +201,7 @@ def update_sun(group_id, user_id, sun_count):
         current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
         current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
         is_join = load_user_join_event(group_id, user_id)
-        total_sun_count = current_sun_count + sun_count
+        total_sun_count = max(0, current_sun_count + sun_count)  # 确保阳光数量不为负数
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
@@ -220,7 +220,7 @@ def update_sun(group_id, user_id, sun_count):
         return True
     else:
         logging.info(
-            f"用户{user_id}在{group_id}的阳光操作时间小于30秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
+            f"用户{user_id}在{group_id}的阳光操作时间小于60秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
         )
         return False
 
@@ -235,7 +235,9 @@ def update_rain(group_id, user_id, rain_count):
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
     if current_time is None or (time - current_time).seconds > 60:
         is_join = load_user_join_event(group_id, user_id)
-        total_rain_count = current_rain_count + rain_count
+        total_rain_count = max(
+            0, current_rain_count + rain_count
+        )  # 确保雨水数量不为负数
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
@@ -311,6 +313,8 @@ async def sun_menu(websocket, group_id, message_id):
 退出奇遇:退出奇遇 或 sunquit
 阳光排行榜:阳光排行榜 或 sunrank
 雨水排行榜:雨水排行榜 或 rainrank
+抢夺阳光:stealsun@
+抢夺雨水:stealrain@
 想加新玩法或建议或bug反馈
 联系https://blog.w1ndys.top/html/QQ.html"""
     await send_group_msg(websocket, group_id, content)
@@ -574,6 +578,94 @@ async def random_add(websocket, group_id, user_id, message_id):
                     # logging.info(f"触发奇遇事件,{user_id}在{group_id}添加{sun_count}滴雨水")
 
 
+# 抢夺阳光或雨水
+def steal_resources(group_id, user_id, target_user_id, resource_type):
+    current_time = load_user_last_operation_time(group_id, user_id)
+    time = datetime.datetime.now().replace(microsecond=0)
+    if current_time is None or (time - current_time).seconds > 60:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        if resource_type == "sun":
+            cursor.execute(
+                "SELECT sun_count FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+                (group_id, target_user_id),
+            )
+        else:
+            cursor.execute(
+                "SELECT rain_count FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+                (group_id, target_user_id),
+            )
+
+        target_resource = cursor.fetchone()
+        if not target_resource:
+            conn.close()
+            return False, "目标用户不存在或没有资源(冷却60秒)"
+
+        target_resource = target_resource[0]
+        steal_amount = int(target_resource * random.uniform(0.1, 0.3))
+
+        if random.random() < 0.5:  # 50% 成功率
+            if resource_type == "sun":
+                new_target_sun_count = max(0, target_resource - steal_amount)
+                cursor.execute(
+                    "UPDATE collect_the_sun SET sun_count = ? WHERE group_id = ? AND user_id = ?",
+                    (new_target_sun_count, group_id, target_user_id),
+                )
+                cursor.execute(
+                    "UPDATE collect_the_sun SET sun_count = sun_count + ?, time = ? WHERE group_id = ? AND user_id = ?",
+                    (steal_amount, time, group_id, user_id),
+                )
+            else:
+                new_target_rain_count = max(0, target_resource - steal_amount)
+                cursor.execute(
+                    "UPDATE collect_the_sun SET rain_count = ? WHERE group_id = ? AND user_id = ?",
+                    (new_target_rain_count, group_id, target_user_id),
+                )
+                cursor.execute(
+                    "UPDATE collect_the_sun SET rain_count = rain_count + ?, time = ? WHERE group_id = ? AND user_id = ?",
+                    (steal_amount, time, group_id, user_id),
+                )
+            conn.commit()
+            conn.close()
+            return True, f"成功抢夺了{steal_amount}颗{resource_type}(冷却60秒)"
+        else:
+            if resource_type == "sun":
+                cursor.execute(
+                    "UPDATE collect_the_sun SET sun_count = sun_count - ?, time = ? WHERE group_id = ? AND user_id = ?",
+                    (steal_amount, time, group_id, user_id),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE collect_the_sun SET rain_count = rain_count - ?, time = ? WHERE group_id = ? AND user_id = ?",
+                    (steal_amount, time, group_id, user_id),
+                )
+            conn.commit()
+            conn.close()
+            return False, f"抢夺失败，损失了{steal_amount}颗{resource_type}(冷却60秒)"
+    else:
+        logging.info(
+            f"用户{user_id}在{group_id}的抢夺操作时间小于60秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
+        )
+        return (
+            False,
+            f"抢夺操作时间小于60秒,无法操作，还剩{60 - (time - current_time).seconds}秒(冷却60秒)",
+        )
+
+
+# 处理抢夺命令
+async def handle_steal_command(
+    websocket, group_id, user_id, target_user_id, resource_type, message_id
+):
+    success, message = steal_resources(group_id, user_id, target_user_id, resource_type)
+    if success:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]{message}",
+        )
+
+
 # 群消息处理函数
 async def handle_CollectTheSun_group_message(websocket, msg):
     # 确保数据目录存在
@@ -638,6 +730,24 @@ async def handle_CollectTheSun_group_message(websocket, msg):
 
         if raw_message == "雨水排行榜" or raw_message == "rainrank":
             await rain_rank(websocket, group_id, message_id)
+            return
+
+        # 正则匹配抢夺阳光或雨水命令
+        steal_sun_match = re.match(r"stealsun\[CQ:at,qq=(\d+)\]", raw_message)
+        steal_rain_match = re.match(r"stealrain\[CQ:at,qq=(\d+)\]", raw_message)
+
+        if steal_sun_match:
+            target_user_id = steal_sun_match.group(1)
+            await handle_steal_command(
+                websocket, group_id, user_id, target_user_id, "sun", message_id
+            )
+            return
+
+        if steal_rain_match:
+            target_user_id = steal_rain_match.group(1)
+            await handle_steal_command(
+                websocket, group_id, user_id, target_user_id, "rain", message_id
+            )
             return
 
         # 如果不是上述命令,进入奇遇事件
