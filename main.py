@@ -129,6 +129,15 @@ def load_user_all_sun(user_id):
     return sum(result[0] for result in result)
 
 
+# 判断是否在冷却
+def is_in_cd(group_id, user_id):
+    time = datetime.datetime.now().replace(microsecond=0)
+    current_time = load_user_last_operation_time(group_id, user_id)
+    if current_time is None or (time - current_time).seconds > 60:
+        return False
+    return True
+
+
 # 读取用户所有群的雨水,求和
 def load_user_all_rain(user_id):
     conn = sqlite3.connect(DB_PATH)
@@ -193,83 +202,54 @@ def load_all_rain():
 
 
 # 更新用户在某群的阳光
-async def update_sun(websocket, group_id, user_id, sun_count, message_id):
-    current_time = load_user_last_operation_time(
-        group_id, user_id
-    )  # 获取上次sun或rain操作时间
+def update_sun(group_id, user_id, sun_count):
     time = datetime.datetime.now().replace(microsecond=0)
-    if current_time is None or (time - current_time).seconds > 60:
-        current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-        current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
-        is_join = load_user_join_event(group_id, user_id)
-        total_sun_count = max(0, current_sun_count + sun_count)  # 确保阳光数量不为负数
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                group_id,
-                user_id,
-                total_sun_count,
-                current_rain_count,
-                time,
-                is_join,
-            ),  # 保持雨水数量不变
-        )
-        conn.commit()
-        conn.close()
-        return True
-    else:
-        logging.info(
-            f"用户{user_id}在{group_id}的阳光操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒"
-        )
-        await send_group_msg(
-            websocket,
+    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
+    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
+    is_join = load_user_join_event(group_id, user_id)
+    total_sun_count = max(0, current_sun_count + sun_count)  # 确保阳光数量不为负数
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+        (
             group_id,
-            f"[CQ:reply,id={message_id}]操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒",
-        )
-        return False
+            user_id,
+            total_sun_count,
+            current_rain_count,
+            time,
+            is_join,
+        ),  # 保持雨水数量不变
+    )
+    conn.commit()
+    conn.close()
+    return True
 
 
 # 更新用户在某群的雨水
-async def update_rain(websocket, group_id, user_id, rain_count, message_id):
-    current_time = load_user_last_operation_time(
-        group_id, user_id
-    )  # 获取上次sun或rain操作时间
+def update_rain(group_id, user_id, rain_count):
     time = datetime.datetime.now().replace(microsecond=0)
     current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-    if current_time is None or (time - current_time).seconds > 60:
-        is_join = load_user_join_event(group_id, user_id)
-        total_rain_count = max(
-            0, current_rain_count + rain_count
-        )  # 确保雨水数量不为负数
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                group_id,
-                user_id,
-                current_sun_count,
-                total_rain_count,
-                time,
-                is_join,
-            ),  # 保持阳光数量不变
-        )
-        conn.commit()
-        conn.close()
-        return True
-    else:
-        logging.info(
-            f"用户{user_id}在{group_id}的雨水操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒"
-        )
-        await send_group_msg(
-            websocket,
+
+    is_join = load_user_join_event(group_id, user_id)
+    total_rain_count = max(0, current_rain_count + rain_count)  # 确保雨水数量不为负数
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+        (
             group_id,
-            f"[CQ:reply,id={message_id}]操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒",
-        )
-        return False
+            user_id,
+            current_sun_count,
+            total_rain_count,
+            time,
+            is_join,
+        ),  # 保持阳光数量不变
+    )
+    conn.commit()
+    conn.close()
+    return True
 
 
 # 加入奇遇
@@ -356,7 +336,7 @@ async def collect_sun(websocket, group_id, user_id, message_id):
             200 / (1 + math.log1p(current_sun_count)) * random.uniform(0.1, 0.2)
         ) + random.randint(500, 2000)
         message = f"收集了{sun_count}颗阳光"
-    if await update_sun(websocket, group_id, user_id, sun_count, message_id):
+    if update_sun(group_id, user_id, sun_count):
         await send_group_msg(
             websocket,
             group_id,
@@ -392,7 +372,7 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         ) + random.randint(500, 2000)
         message = f"收集了{rain_count}滴雨水"
 
-    if await update_rain(websocket, group_id, user_id, rain_count, message_id):
+    if update_rain(group_id, user_id, rain_count):
         await send_group_msg(
             websocket,
             group_id,
@@ -570,9 +550,7 @@ async def random_add(websocket, group_id, user_id, message_id):
             sun_count = random.randint(500, 1000)
             event = random.choice(events)
             if random.random() < 0.5:  # 百分之五十的概率收集阳光
-                if await update_sun(
-                    websocket, group_id, user_id, sun_count, message_id
-                ):
+                if update_sun(group_id, user_id, sun_count):
                     await send_group_msg(
                         websocket,
                         group_id,
@@ -581,9 +559,7 @@ async def random_add(websocket, group_id, user_id, message_id):
                     # logging.info(f"触发奇遇事件,{user_id}在{group_id}添加{sun_count}颗阳光")
 
             else:  # 百分之五十的概率收集雨水
-                if await update_rain(
-                    websocket, group_id, user_id, sun_count, message_id
-                ):
+                if update_rain(group_id, user_id, sun_count):
                     await send_group_msg(
                         websocket,
                         group_id,
@@ -611,10 +587,8 @@ async def steal_sun(websocket, group_id, user_id, target_user_id, message_id):
     lose_amount = int(steal_sun_user * random.uniform(0.1, 0.3))
 
     if random.random() < 0.5:  # 50% 成功率
-        if await update_sun(
-            websocket, group_id, user_id, steal_amount, message_id
-        ) and await update_sun(
-            websocket, group_id, target_user_id, -lose_amount, message_id
+        if update_sun(group_id, user_id, steal_amount) and update_sun(
+            group_id, target_user_id, -lose_amount
         ):
             await send_group_msg(
                 websocket,
@@ -622,7 +596,7 @@ async def steal_sun(websocket, group_id, user_id, target_user_id, message_id):
                 f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}颗阳光(冷却60秒)",
             )
     else:
-        if await update_sun(websocket, group_id, user_id, -lose_amount, message_id):
+        if update_sun(group_id, user_id, -lose_amount):
             await send_group_msg(
                 websocket,
                 group_id,
@@ -650,10 +624,8 @@ async def steal_rain(websocket, group_id, user_id, target_user_id, message_id):
     lose_amount = int(steal_rain_user * random.uniform(0.1, 0.3))
 
     if random.random() < 0.5:  # 50% 成功率
-        if await update_rain(
-            websocket, group_id, user_id, steal_amount, message_id
-        ) and await update_rain(
-            websocket, group_id, target_user_id, -lose_amount, message_id
+        if update_rain(group_id, user_id, steal_amount) and update_rain(
+            group_id, target_user_id, -lose_amount
         ):
             await send_group_msg(
                 websocket,
@@ -667,7 +639,7 @@ async def steal_rain(websocket, group_id, user_id, target_user_id, message_id):
                 f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}滴雨水(冷却60秒)",
             )
     else:
-        if await update_rain(websocket, group_id, user_id, -lose_amount, message_id):
+        if update_rain(group_id, user_id, -lose_amount):
             await send_group_msg(
                 websocket,
                 group_id,
@@ -704,12 +676,28 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             or raw_message == "啦啦啦种太阳"
             or raw_message == "种太阳"
         ):
-            await collect_sun(websocket, group_id, user_id, message_id)
-            return
+            if not is_in_cd(group_id, user_id):
+                await collect_sun(websocket, group_id, user_id, message_id)
+                return
+            else:
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]你当前处于冷却状态,冷却时间:{60 - (datetime.datetime.now() - load_user_last_operation_time(group_id, user_id)).seconds}秒",
+                )
+                return
 
         if raw_message == "收集雨水" or raw_message == "rain":
-            await collect_rain(websocket, group_id, user_id, message_id)
-            return
+            if not is_in_cd(group_id, user_id):
+                await collect_rain(websocket, group_id, user_id, message_id)
+                return
+            else:
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]你当前处于冷却状态,冷却时间:{60 - (datetime.datetime.now() - load_user_last_operation_time(group_id, user_id)).seconds}秒",
+                )
+                return
 
         if raw_message == "查看信息" or raw_message == "suninfo":
             await check_info(websocket, group_id, user_id, message_id)
@@ -742,21 +730,36 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             return
 
         if raw_message.startswith("抢夺阳光") or raw_message.startswith("stealsun"):
-            steal_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
-            if steal_sun_match:
-                target_user_id = steal_sun_match.group(1)
-                await steal_sun(
-                    websocket, group_id, user_id, target_user_id, message_id
+            if not is_in_cd(group_id, user_id):
+                steal_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
+                if steal_sun_match:
+                    target_user_id = steal_sun_match.group(1)
+                    await steal_sun(
+                        websocket, group_id, user_id, target_user_id, message_id
+                    )
+                    return
+            else:
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]你当前处于冷却状态,冷却时间:{60 - (datetime.datetime.now() - load_user_last_operation_time(group_id, user_id)).seconds}秒",
                 )
                 return
 
         if raw_message.startswith("抢夺雨水") or raw_message.startswith("stealrain"):
             steal_rain_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
-
-            if steal_rain_match:
-                target_user_id = steal_rain_match.group(1)
-                await steal_rain(
-                    websocket, group_id, user_id, target_user_id, message_id
+            if not is_in_cd(group_id, user_id):
+                if steal_rain_match:
+                    target_user_id = steal_rain_match.group(1)
+                    await steal_rain(
+                        websocket, group_id, user_id, target_user_id, message_id
+                    )
+                    return
+            else:
+                await send_group_msg(
+                    websocket,
+                    group_id,
+                    f"[CQ:reply,id={message_id}]你当前处于冷却状态,冷却时间:{60 - (datetime.datetime.now() - load_user_last_operation_time(group_id, user_id)).seconds}秒",
                 )
                 return
 
