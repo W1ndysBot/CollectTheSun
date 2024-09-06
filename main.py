@@ -304,8 +304,10 @@ async def sun_menu(websocket, group_id, message_id):
 退出奇遇:退出奇遇 或 sunquit
 阳光排行榜:阳光排行榜 或 sunrank
 雨水排行榜:雨水排行榜 或 rainrank
-抢夺阳光:stealsun@
-抢夺雨水:stealrain@
+抢夺阳光:抢夺阳光 或 stealsun@
+抢夺雨水:抢夺雨水 或 stealrain@
+赠送阳光:赠送阳光 或 givesun@赠送量
+赠送雨水:赠送雨水 或 giverain@赠送量
 想加新玩法或建议或bug反馈
 联系https://blog.w1ndys.top/html/QQ.html"""
     await send_group_msg(websocket, group_id, content)
@@ -647,6 +649,60 @@ async def steal_rain(websocket, group_id, user_id, target_user_id, message_id):
             )
 
 
+# 赠送阳光
+async def give_sun(websocket, group_id, user_id, target_user_id, amount, message_id):
+    user_sun = load_user_sun(group_id, user_id)
+    if not user_sun or user_sun < amount:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]你没有足够的阳光,无法赠送",
+        )
+        return
+
+    if update_sun(group_id, target_user_id, amount) and update_sun(
+        group_id, user_id, -amount
+    ):
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]成功赠送给[CQ:at,qq={target_user_id}][{amount}]颗阳光",
+        )
+    else:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]赠送失败,目标用户不存在或你的阳光不足",
+        )
+
+
+# 赠送雨水
+async def give_rain(websocket, group_id, user_id, target_user_id, amount, message_id):
+    user_rain = load_user_rain(group_id, user_id)
+    if not user_rain or user_rain < amount:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]你没有足够的雨水,无法赠送",
+        )
+        return
+
+    if update_rain(group_id, target_user_id, amount) and update_rain(
+        group_id, user_id, -amount
+    ):
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]成功赠送给[CQ:at,qq={target_user_id}][{amount}]滴雨水",
+        )
+    else:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]赠送失败,目标用户不存在或你的雨水不足",
+        )
+
+
 # 群消息处理函数
 async def handle_CollectTheSun_group_message(websocket, msg):
     # 确保数据目录存在
@@ -687,6 +743,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 )
                 return
 
+        # 收集雨水
         if raw_message == "收集雨水" or raw_message == "rain":
             if not is_in_cd(group_id, user_id):
                 await collect_rain(websocket, group_id, user_id, message_id)
@@ -699,10 +756,12 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 )
                 return
 
+        # 查看信息
         if raw_message == "查看信息" or raw_message == "suninfo":
             await check_info(websocket, group_id, user_id, message_id)
             return
 
+        # 加入奇遇
         if raw_message == "加入奇遇" or raw_message == "sunjoin":
             if join_event(group_id, user_id):
                 await send_group_msg(
@@ -712,6 +771,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 )
             return
 
+        # 退出奇遇
         if raw_message == "退出奇遇" or raw_message == "sunquit":
             if quit_event(group_id, user_id):
                 await send_group_msg(
@@ -721,14 +781,17 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 )
             return
 
+        # 阳光排行榜
         if raw_message == "阳光排行榜" or raw_message == "sunrank":
             await sun_rank(websocket, group_id, message_id)
             return
 
+        # 雨水排行榜
         if raw_message == "雨水排行榜" or raw_message == "rainrank":
             await rain_rank(websocket, group_id, message_id)
             return
 
+        # 抢夺阳光
         if raw_message.startswith("抢夺阳光") or raw_message.startswith("stealsun"):
             if not is_in_cd(group_id, user_id):
                 steal_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
@@ -746,6 +809,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 )
                 return
 
+        # 抢夺雨水
         if raw_message.startswith("抢夺雨水") or raw_message.startswith("stealrain"):
             steal_rain_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
             if not is_in_cd(group_id, user_id):
@@ -760,6 +824,30 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                     websocket,
                     group_id,
                     f"[CQ:reply,id={message_id}]你当前处于冷却状态,冷却时间:{60 - (datetime.datetime.now() - load_user_last_operation_time(group_id, user_id)).seconds}秒",
+                )
+                return
+
+        # 赠送阳光
+        if raw_message.startswith("赠送阳光") or raw_message.startswith("givesun"):
+            raw_message = raw_message.replace(" ", "")
+            give_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]([0-9]+)", raw_message)
+            if give_sun_match:
+                target_user_id = give_sun_match.group(1)
+                amount = int(give_sun_match.group(2))
+                await give_sun(
+                    websocket, group_id, user_id, target_user_id, amount, message_id
+                )
+                return
+
+        # 赠送雨水
+        if raw_message.startswith("赠送雨水") or raw_message.startswith("giverain"):
+            raw_message = raw_message.replace(" ", "")
+            give_rain_match = re.search(r"\[CQ:at,qq=(\d+)\]([0-9]+)", raw_message)
+            if give_rain_match:
+                target_user_id = give_rain_match.group(1)
+                amount = int(give_rain_match.group(2))
+                await give_rain(
+                    websocket, group_id, user_id, target_user_id, amount, message_id
                 )
                 return
 
