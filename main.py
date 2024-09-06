@@ -193,7 +193,7 @@ def load_all_rain():
 
 
 # 更新用户在某群的阳光
-def update_sun(group_id, user_id, sun_count):
+async def update_sun(websocket, group_id, user_id, sun_count, message_id):
     current_time = load_user_last_operation_time(
         group_id, user_id
     )  # 获取上次sun或rain操作时间
@@ -221,13 +221,18 @@ def update_sun(group_id, user_id, sun_count):
         return True
     else:
         logging.info(
-            f"用户{user_id}在{group_id}的阳光操作时间小于60秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
+            f"用户{user_id}在{group_id}的阳光操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒"
+        )
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒",
         )
         return False
 
 
 # 更新用户在某群的雨水
-def update_rain(group_id, user_id, rain_count):
+async def update_rain(websocket, group_id, user_id, rain_count, message_id):
     current_time = load_user_last_operation_time(
         group_id, user_id
     )  # 获取上次sun或rain操作时间
@@ -257,7 +262,12 @@ def update_rain(group_id, user_id, rain_count):
         return True
     else:
         logging.info(
-            f"用户{user_id}在{group_id}的雨水操作时间小于30秒,无法操作，还剩{60 - (time - current_time).seconds}秒"
+            f"用户{user_id}在{group_id}的雨水操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒"
+        )
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]操作时间小于60秒,无法操作,还剩{60 - (time - current_time).seconds}秒",
         )
         return False
 
@@ -346,7 +356,7 @@ async def collect_sun(websocket, group_id, user_id, message_id):
             200 / (1 + math.log1p(current_sun_count)) * random.uniform(0.1, 0.2)
         ) + random.randint(500, 2000)
         message = f"收集了{sun_count}颗阳光"
-    if update_sun(group_id, user_id, sun_count):
+    if await update_sun(websocket, group_id, user_id, sun_count, message_id):
         await send_group_msg(
             websocket,
             group_id,
@@ -382,7 +392,7 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         ) + random.randint(500, 2000)
         message = f"收集了{rain_count}滴雨水"
 
-    if update_rain(group_id, user_id, rain_count):
+    if await update_rain(websocket, group_id, user_id, rain_count, message_id):
         await send_group_msg(
             websocket,
             group_id,
@@ -560,7 +570,9 @@ async def random_add(websocket, group_id, user_id, message_id):
             sun_count = random.randint(500, 1000)
             event = random.choice(events)
             if random.random() < 0.5:  # 百分之五十的概率收集阳光
-                if update_sun(group_id, user_id, sun_count):
+                if await update_sun(
+                    websocket, group_id, user_id, sun_count, message_id
+                ):
                     await send_group_msg(
                         websocket,
                         group_id,
@@ -569,7 +581,9 @@ async def random_add(websocket, group_id, user_id, message_id):
                     # logging.info(f"触发奇遇事件,{user_id}在{group_id}添加{sun_count}颗阳光")
 
             else:  # 百分之五十的概率收集雨水
-                if update_rain(group_id, user_id, sun_count):
+                if await update_rain(
+                    websocket, group_id, user_id, sun_count, message_id
+                ):
                     await send_group_msg(
                         websocket,
                         group_id,
@@ -580,86 +594,85 @@ async def random_add(websocket, group_id, user_id, message_id):
 
 # 抢夺阳光
 async def steal_sun(websocket, group_id, user_id, target_user_id, message_id):
-    current_time = load_user_last_operation_time(group_id, user_id)
-    time = datetime.datetime.now().replace(microsecond=0)
-    if current_time is None or (time - current_time).seconds > 60:
-        target_resource = load_user_sun(group_id, target_user_id)
-        if not target_resource:
+    target_resource = load_user_sun(group_id, target_user_id)
+    if not target_resource:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]目标用户不存在或没有资源",
+        )
+        return
+
+    # 抢夺阳光的用户
+    steal_sun_user = load_user_sun(group_id, user_id)
+    # 抢夺的阳光数量
+    steal_amount = int(target_resource * random.uniform(0.1, 0.3))
+    # 损失的阳光数量
+    lose_amount = int(steal_sun_user * random.uniform(0.1, 0.3))
+
+    if random.random() < 0.5:  # 50% 成功率
+        if await update_sun(
+            websocket, group_id, user_id, steal_amount, message_id
+        ) and await update_sun(
+            websocket, group_id, target_user_id, -lose_amount, message_id
+        ):
             await send_group_msg(
                 websocket,
                 group_id,
-                f"[CQ:reply,id={message_id}]目标用户不存在或没有资源",
+                f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}颗阳光(冷却60秒)",
             )
-            return
-
-        # 抢夺阳光的用户
-        steal_sun_user = load_user_sun(group_id, user_id)
-        # 抢夺的阳光数量
-        steal_amount = int(target_resource * random.uniform(0.1, 0.3))
-        # 损失的阳光数量
-        lose_amount = int(steal_sun_user * random.uniform(0.1, 0.3))
-
-        if random.random() < 0.5:  # 50% 成功率
-            if update_sun(group_id, user_id, steal_amount) and update_sun(
-                group_id, target_user_id, -lose_amount
-            ):
-                await send_group_msg(
-                    websocket,
-                    group_id,
-                    f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}颗阳光(冷却60秒)",
-                )
-        else:
-            if update_sun(group_id, user_id, -lose_amount):
-                await send_group_msg(
-                    websocket,
-                    group_id,
-                    f"[CQ:reply,id={message_id}]抢夺失败，损失了{lose_amount}颗阳光(冷却60秒)",
-                )
+    else:
+        if await update_sun(websocket, group_id, user_id, -lose_amount, message_id):
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}颗阳光(冷却60秒)",
+            )
 
 
 # 抢夺雨水
 async def steal_rain(websocket, group_id, user_id, target_user_id, message_id):
-    current_time = load_user_last_operation_time(group_id, user_id)
-    time = datetime.datetime.now().replace(microsecond=0)
-    if current_time is None or (time - current_time).seconds > 60:
-        target_resource = load_user_rain(group_id, target_user_id)
-        if not target_resource:
+
+    target_resource = load_user_rain(group_id, target_user_id)
+    if not target_resource:
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]目标用户不存在或没有资源",
+        )
+        return
+
+    # 抢夺雨水的用户
+    steal_rain_user = load_user_rain(group_id, user_id)
+    # 抢夺的雨水数量
+    steal_amount = int(target_resource * random.uniform(0.1, 0.3))
+    # 损失的雨水数量
+    lose_amount = int(steal_rain_user * random.uniform(0.1, 0.3))
+
+    if random.random() < 0.5:  # 50% 成功率
+        if await update_rain(
+            websocket, group_id, user_id, steal_amount, message_id
+        ) and await update_rain(
+            websocket, group_id, target_user_id, -lose_amount, message_id
+        ):
             await send_group_msg(
                 websocket,
                 group_id,
-                f"[CQ:reply,id={message_id}]目标用户不存在或没有资源",
+                f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}滴雨水(冷却60秒)",
             )
-            return
-
-        # 抢夺雨水的用户
-        steal_rain_user = load_user_rain(group_id, user_id)
-        # 抢夺的雨水数量
-        steal_amount = int(target_resource * random.uniform(0.1, 0.3))
-        # 损失的雨水数量
-        lose_amount = int(steal_rain_user * random.uniform(0.1, 0.3))
-
-        if random.random() < 0.5:  # 50% 成功率
-            if update_rain(group_id, user_id, steal_amount) and update_rain(
-                group_id, target_user_id, -lose_amount
-            ):
-                await send_group_msg(
-                    websocket,
-                    group_id,
-                    f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}滴雨水(冷却60秒)",
-                )
-            else:
-                await send_group_msg(
-                    websocket,
-                    group_id,
-                    f"[CQ:reply,id={message_id}]抢夺失败，损失了{lose_amount}滴雨水(冷却60秒)",
-                )
         else:
-            if update_rain(group_id, user_id, -lose_amount):
-                await send_group_msg(
-                    websocket,
-                    group_id,
-                    f"[CQ:reply,id={message_id}]抢夺失败，损失了{lose_amount}滴雨水(冷却60秒)",
-                )
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}滴雨水(冷却60秒)",
+            )
+    else:
+        if await update_rain(websocket, group_id, user_id, -lose_amount, message_id):
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}滴雨水(冷却60秒)",
+            )
 
 
 # 群消息处理函数
