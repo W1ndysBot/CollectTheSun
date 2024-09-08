@@ -201,26 +201,66 @@ def load_all_rain():
     return sum(result[0] for result in result)
 
 
+# 更新CD（操作时间）
+def update_cd(group_id, user_id):
+    time = datetime.datetime.now().replace(microsecond=0)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+        (group_id, user_id),
+    )
+    if cursor.fetchone() is None:
+        cursor.execute(
+            "INSERT INTO collect_the_sun (group_id, user_id, time) VALUES (?, ?, ?)",
+            (group_id, user_id, time),
+        )
+    else:
+        cursor.execute(
+            "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+            (group_id, user_id),
+        )
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "INSERT INTO collect_the_sun (group_id, user_id, time) VALUES (?, ?, ?)",
+                (group_id, user_id, time),
+            )
+        else:
+            cursor.execute(
+                "UPDATE collect_the_sun SET time = ? WHERE group_id = ? AND user_id = ?",
+                (time, group_id, user_id),
+            )
+    logging.info(f"更新用户{user_id}在群{group_id}的CD:{time}")
+    conn.commit()
+    conn.close()
+
+
 # 更新用户在某群的阳光
 def update_sun(group_id, user_id, sun_count):
-    time = datetime.datetime.now().replace(microsecond=0)
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
-    is_join = load_user_join_event(group_id, user_id)
     total_sun_count = max(0, current_sun_count + sun_count)  # 确保阳光数量不为负数
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-        (
-            group_id,
-            user_id,
-            total_sun_count,
-            current_rain_count,
-            time,
-            is_join,
-        ),  # 保持雨水数量不变
+        "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+        (group_id, user_id),
     )
+    if cursor.fetchone() is None:
+        cursor.execute(
+            "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
+            (group_id, user_id),
+        )
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "INSERT INTO collect_the_sun (group_id, user_id, sun_count) VALUES (?, ?, ?)",
+                (group_id, user_id, total_sun_count),
+            )
+        else:
+            cursor.execute(
+                "UPDATE collect_the_sun SET sun_count = ? WHERE group_id = ? AND user_id = ?",
+                (total_sun_count, group_id, user_id),
+            )
+    logging.info(f"更新用户{user_id}在群{group_id}的阳光:{total_sun_count}")
     conn.commit()
     conn.close()
     return True
@@ -228,24 +268,17 @@ def update_sun(group_id, user_id, sun_count):
 
 # 更新用户在某群的雨水
 def update_rain(group_id, user_id, rain_count):
-    time = datetime.datetime.now().replace(microsecond=0)
     current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
-    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-
-    is_join = load_user_join_event(group_id, user_id)
     total_rain_count = max(0, current_rain_count + rain_count)  # 确保雨水数量不为负数
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
+        "UPDATE collect_the_sun SET rain_count = ? WHERE group_id = ? AND user_id = ?",
         (
+            total_rain_count,
             group_id,
             user_id,
-            current_sun_count,
-            total_rain_count,
-            time,
-            is_join,
-        ),  # 保持阳光数量不变
+        ),
     )
     conn.commit()
     conn.close()
@@ -254,17 +287,11 @@ def update_rain(group_id, user_id, rain_count):
 
 # 加入奇遇
 def join_event(group_id, user_id):
-    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
-    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-
-    # 获取上次sun或rain操作时间
-    current_time = load_user_last_operation_time(group_id, user_id)
-
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-        (group_id, user_id, current_sun_count, current_rain_count, current_time, True),
+        "UPDATE collect_the_sun SET is_join = ? WHERE group_id = ? AND user_id = ?",
+        (True, group_id, user_id),
     )
     conn.commit()
     conn.close()
@@ -273,17 +300,11 @@ def join_event(group_id, user_id):
 
 # 退出奇遇
 def quit_event(group_id, user_id):
-    current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
-    current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
-
-    # 获取上次sun或rain操作时间
-    current_time = load_user_last_operation_time(group_id, user_id)
-
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO collect_the_sun (group_id, user_id, sun_count, rain_count, time, is_join) VALUES (?, ?, ?, ?, ?, ?)",
-        (group_id, user_id, current_sun_count, current_rain_count, current_time, False),
+        "UPDATE collect_the_sun SET is_join = ? WHERE group_id = ? AND user_id = ?",
+        (False, group_id, user_id),
     )
     conn.commit()
     conn.close()
@@ -300,14 +321,14 @@ async def sun_menu(websocket, group_id, message_id):
 查看信息:查看信息 或 suninfo
 加入奇遇:加入奇遇 或 sunjoin
 退出奇遇:退出奇遇 或 sunquit
-阳光排行榜:阳光排行榜 或 sunrank
-雨水排行榜:雨水排行榜 或 rainrank
-抢夺阳光:抢夺阳光 或 stealsun@
-抢夺雨水:抢夺雨水 或 stealrain@
-赠送阳光:赠送阳光 或 givesun@赠送量
-赠送雨水:赠送雨水 或 giverain@赠送量
+阳光榜:阳光榜 或 sunrank
+雨水榜:雨水榜 或 rainrank
+偷阳光:偷阳光 或 stealsun@
+偷雨水:偷雨水 或 stealrain@
+送阳光:送阳光 或 givesun@赠送量
+送雨水:送雨水 或 giverain@赠送量
 想加新玩法或建议或bug反馈
-联系https://blog.w1ndys.top/html/QQ.html"""
+联系QQhttps://qm.qq.com/q/dJjlDIFJfM"""
     await send_group_msg(websocket, group_id, content)
 
 
@@ -337,6 +358,7 @@ async def collect_sun(websocket, group_id, user_id, message_id):
         ) + random.randint(500, 2000)
         message = f"收集了{sun_count}颗阳光"
     if update_sun(group_id, user_id, sun_count):
+        update_cd(group_id, user_id)
         await send_group_msg(
             websocket,
             group_id,
@@ -373,6 +395,7 @@ async def collect_rain(websocket, group_id, user_id, message_id):
         message = f"收集了{rain_count}滴雨水"
 
     if update_rain(group_id, user_id, rain_count):
+        update_cd(group_id, user_id)
         await send_group_msg(
             websocket,
             group_id,
@@ -466,6 +489,23 @@ async def check_info(websocket, group_id, user_id, message_id):
         f"阳光:{load_user_all_sun(user_id)},雨水:{load_user_all_rain(user_id)},有效阳光:{load_user_all_sun(user_id) - load_user_all_rain(user_id)}\n"
         f"[全服数据]\n"
         f"阳光:{load_all_sun()},雨水:{load_all_rain()},有效阳光:{load_all_sun() - load_all_rain()}"
+    )
+    await send_group_msg(websocket, group_id, content)
+
+
+# 查看某用户信息
+async def check_user_info(
+    websocket,
+    group_id,
+    target_user_id,
+    message_id,
+):
+    content = (
+        f"[CQ:reply,id={message_id}]"
+        f"[{target_user_id}在本群]\n"
+        f"阳光:{load_user_sun(group_id, target_user_id)},雨水:{load_user_rain(group_id, target_user_id)},有效阳光:{load_user_sun(group_id, target_user_id) - load_user_rain(group_id, target_user_id)}\n"
+        f"[{target_user_id}在全服]\n"
+        f"阳光:{load_user_all_sun(target_user_id)},雨水:{load_user_all_rain(target_user_id)},有效阳光:{load_user_all_sun(target_user_id) - load_user_all_rain(target_user_id)}"
     )
     await send_group_msg(websocket, group_id, content)
 
@@ -590,6 +630,7 @@ async def steal_sun(websocket, group_id, user_id, target_user_id, message_id):
         if update_sun(group_id, user_id, steal_amount) and update_sun(
             group_id, target_user_id, -lose_amount
         ):
+            update_cd(group_id, user_id)
             await send_group_msg(
                 websocket,
                 group_id,
@@ -597,6 +638,7 @@ async def steal_sun(websocket, group_id, user_id, target_user_id, message_id):
             )
     else:
         if update_sun(group_id, user_id, -lose_amount):
+            update_cd(group_id, user_id)
             await send_group_msg(
                 websocket,
                 group_id,
@@ -627,19 +669,15 @@ async def steal_rain(websocket, group_id, user_id, target_user_id, message_id):
         if update_rain(group_id, user_id, steal_amount) and update_rain(
             group_id, target_user_id, -lose_amount
         ):
+            update_cd(group_id, user_id)
             await send_group_msg(
                 websocket,
                 group_id,
                 f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}滴雨水(冷却60秒)",
             )
-        else:
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}滴雨水(冷却60秒)",
-            )
     else:
         if update_rain(group_id, user_id, -lose_amount):
+            update_cd(group_id, user_id)
             await send_group_msg(
                 websocket,
                 group_id,
@@ -755,8 +793,18 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 return
 
         # 查看信息
-        if raw_message == "查看信息" or raw_message == "suninfo":
-            await check_info(websocket, group_id, user_id, message_id)
+        if raw_message.startswith("查看信息") or raw_message.startswith("suninfo"):
+            match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
+            if match:
+                target_user_id = match.group(1)
+                await check_user_info(
+                    websocket,
+                    group_id,
+                    target_user_id,
+                    message_id,
+                )
+            else:
+                await check_info(websocket, group_id, user_id, message_id)
             return
 
         # 加入奇遇
@@ -780,17 +828,17 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             return
 
         # 阳光排行榜
-        if raw_message == "阳光排行榜" or raw_message == "sunrank":
+        if raw_message == "阳光榜" or raw_message == "sunrank":
             await sun_rank(websocket, group_id, message_id)
             return
 
         # 雨水排行榜
-        if raw_message == "雨水排行榜" or raw_message == "rainrank":
+        if raw_message == "雨水榜" or raw_message == "rainrank":
             await rain_rank(websocket, group_id, message_id)
             return
 
         # 抢夺阳光
-        if raw_message.startswith("抢夺阳光") or raw_message.startswith("stealsun"):
+        if raw_message.startswith("偷阳光") or raw_message.startswith("stealsun"):
             if not is_in_cd(group_id, user_id):
                 steal_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
                 if steal_sun_match:
@@ -808,7 +856,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 return
 
         # 抢夺雨水
-        if raw_message.startswith("抢夺雨水") or raw_message.startswith("stealrain"):
+        if raw_message.startswith("偷雨水") or raw_message.startswith("stealrain"):
             steal_rain_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
             if not is_in_cd(group_id, user_id):
                 if steal_rain_match:
@@ -826,7 +874,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 return
 
         # 赠送阳光
-        if raw_message.startswith("赠送阳光") or raw_message.startswith("givesun"):
+        if raw_message.startswith("送阳光") or raw_message.startswith("givesun"):
             raw_message = raw_message.replace(" ", "")
             give_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]([0-9]+)", raw_message)
             if give_sun_match:
@@ -837,8 +885,8 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 )
                 return
 
-        # 赠送雨水
-        if raw_message.startswith("赠送雨水") or raw_message.startswith("giverain"):
+        # 送雨水
+        if raw_message.startswith("送雨水") or raw_message.startswith("giverain"):
             raw_message = raw_message.replace(" ", "")
             give_rain_match = re.search(r"\[CQ:at,qq=(\d+)\]([0-9]+)", raw_message)
             if give_rain_match:
