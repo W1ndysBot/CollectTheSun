@@ -465,7 +465,7 @@ async def check_info(websocket, group_id, user_id, message_id):
         f"[你在全服]\n"
         f"阳光:{load_user_all_sun(user_id)},雨水:{load_user_all_rain(user_id)},有效阳光:{load_user_all_sun(user_id) - load_user_all_rain(user_id)}\n"
         f"[全服数据]\n"
-        f"阳光:{load_all_sun()},雨水:{load_all_rain()},有效阳光:{load_all_sun() - load_all_rain()}\n"
+        f"阳光:{load_all_sun()},雨水:{load_all_rain()},有效阳光:{load_all_sun() - load_all_rain()}"
     )
     await send_group_msg(websocket, group_id, content)
 
