@@ -319,6 +319,7 @@ async def sun_menu(websocket, group_id, message_id):
 收集阳光:收集阳光 或 sun
 收集雨水:收集雨水 或 rain
 查看信息:查看信息 或 suninfo
+查看别人信息:查看信息@ 或 suninfo@
 加入奇遇:加入奇遇 或 sunjoin
 退出奇遇:退出奇遇 或 sunquit
 阳光榜:阳光榜 或 sunrank
