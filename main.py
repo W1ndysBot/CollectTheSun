@@ -234,32 +234,23 @@ def update_cd(group_id, user_id):
     conn.commit()
     conn.close()
 
-
 # 更新用户在某群的阳光
 def update_sun(group_id, user_id, sun_count):
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
     total_sun_count = max(0, current_sun_count + sun_count)  # 确保阳光数量不为负数
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # 使用 UPSERT 来插入或更新数据
     cursor.execute(
-        "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
-        (group_id, user_id),
+        """
+        INSERT INTO collect_the_sun (group_id, user_id, sun_count)
+        VALUES (?, ?, ?)
+        ON CONFLICT(group_id, user_id)
+        DO UPDATE SET sun_count = excluded.sun_count;
+        """,
+        (group_id, user_id, total_sun_count),
     )
-    if cursor.fetchone() is None:
-        cursor.execute(
-            "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
-            (group_id, user_id),
-        )
-        if cursor.fetchone() is None:
-            cursor.execute(
-                "INSERT INTO collect_the_sun (group_id, user_id, sun_count) VALUES (?, ?, ?)",
-                (group_id, user_id, total_sun_count),
-            )
-        else:
-            cursor.execute(
-                "UPDATE collect_the_sun SET sun_count = ? WHERE group_id = ? AND user_id = ?",
-                (total_sun_count, group_id, user_id),
-            )
     # logging.info(f"更新用户{user_id}在群{group_id}的阳光:{total_sun_count}")
     conn.commit()
     conn.close()
@@ -270,15 +261,18 @@ def update_sun(group_id, user_id, sun_count):
 def update_rain(group_id, user_id, rain_count):
     current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
     total_rain_count = max(0, current_rain_count + rain_count)  # 确保雨水数量不为负数
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # 使用 UPSERT 来插入或更新数据
     cursor.execute(
-        "UPDATE collect_the_sun SET rain_count = ? WHERE group_id = ? AND user_id = ?",
-        (
-            total_rain_count,
-            group_id,
-            user_id,
-        ),
+        """
+        INSERT INTO collect_the_sun (group_id, user_id, rain_count)
+        VALUES (?, ?, ?)
+        ON CONFLICT(group_id, user_id)
+        DO UPDATE SET rain_count = excluded.rain_count;
+        """,
+        (group_id, user_id, total_rain_count),
     )
     conn.commit()
     conn.close()
