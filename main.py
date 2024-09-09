@@ -508,7 +508,6 @@ async def check_user_info(
 
 # 阳光排行榜
 async def sun_rank(websocket, group_id, message_id):
-    # logging.debug(f"群号:{group_id}")
     top_three_sun = get_top_three_sun(group_id)
     top_three_sun_all = get_top_three_sun_all()
     top_three_group_sun = get_top_three_group_sun()
@@ -516,15 +515,12 @@ async def sun_rank(websocket, group_id, message_id):
     content += f"本群有效阳光前三的用户:\n"
     for rank, (user_id, sun_count) in enumerate(top_three_sun, 1):
         content += f"{rank}. <{user_id}>: {sun_count}阳光\n"
-    # logging.debug(f"群号:{group_id}")
     content += f"\n全服有效阳光前三的用户:\n"
     for rank, (user_id, sun_count) in enumerate(top_three_sun_all, 1):
         content += f"{rank}. <{user_id}>: {sun_count}阳光\n"
-    # logging.debug(f"群号:{group_id}")
     content += f"\n全服有效阳光前三的群:\n"
     for rank, (group_id_in_db, sun_count) in enumerate(top_three_group_sun, 1):
         content += f"{rank}. <{group_id_in_db}>: {sun_count}阳光\n"
-    # logging.debug(f"群号:{group_id}")
     await send_group_msg(websocket, group_id, content)
 
 
