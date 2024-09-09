@@ -88,7 +88,7 @@ def load_user_rain(group_id, user_id):
     return result[0] if result else 0
 
 
-# 读取上次sun或rain操作时间
+# 读取上次操作时间
 def load_user_last_operation_time(group_id, user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -477,14 +477,26 @@ def get_top_three_group_rain():
 
 # 查看信息
 async def check_info(websocket, group_id, user_id, message_id):
+    user_sun = load_user_sun(group_id, user_id)
+    user_rain = load_user_rain(group_id, user_id)
+    user_all_sun = load_user_all_sun(user_id)
+    user_all_rain = load_user_all_rain(user_id)
+    all_sun = load_all_sun()
+    all_rain = load_all_rain()
+    is_join_event = load_user_join_event(group_id, user_id)
+    last_operation_time = load_user_last_operation_time(group_id, user_id)
     content = (
         f"[CQ:reply,id={message_id}]"
         f"[你在本群]\n"
-        f"阳光:{load_user_sun(group_id, user_id)},雨水:{load_user_rain(group_id, user_id)},有效阳光:{load_user_sun(group_id, user_id) - load_user_rain(group_id, user_id)}\n"
+        f"阳光:{user_sun},雨水:{user_rain},有效阳光:{user_sun - user_rain}\n"
         f"[你在全服]\n"
-        f"阳光:{load_user_all_sun(user_id)},雨水:{load_user_all_rain(user_id)},有效阳光:{load_user_all_sun(user_id) - load_user_all_rain(user_id)}\n"
+        f"阳光:{user_all_sun},雨水:{user_all_rain},有效阳光:{user_all_sun - user_all_rain}\n"
         f"[全服数据]\n"
-        f"阳光:{load_all_sun()},雨水:{load_all_rain()},有效阳光:{load_all_sun() - load_all_rain()}"
+        f"阳光:{all_sun},雨水:{all_rain},有效阳光:{all_sun - all_rain}\n"
+        f"[上次操作时间]\n"
+        f"{last_operation_time}\n"
+        f"[是否在奇遇]\n"
+        f"{is_join_event}"
     )
     await send_group_msg(websocket, group_id, content)
 
@@ -496,12 +508,26 @@ async def check_user_info(
     target_user_id,
     message_id,
 ):
+    user_sun = load_user_sun(group_id, target_user_id)
+    user_rain = load_user_rain(group_id, target_user_id)
+    user_all_sun = load_user_all_sun(target_user_id)
+    user_all_rain = load_user_all_rain(target_user_id)
+    all_sun = load_all_sun()
+    all_rain = load_all_rain()
+    is_join_event = load_user_join_event(group_id, target_user_id)
+    last_operation_time = load_user_last_operation_time(group_id, target_user_id)
     content = (
         f"[CQ:reply,id={message_id}]"
-        f"[{target_user_id}在本群]\n"
-        f"阳光:{load_user_sun(group_id, target_user_id)},雨水:{load_user_rain(group_id, target_user_id)},有效阳光:{load_user_sun(group_id, target_user_id) - load_user_rain(group_id, target_user_id)}\n"
-        f"[{target_user_id}在全服]\n"
-        f"阳光:{load_user_all_sun(target_user_id)},雨水:{load_user_all_rain(target_user_id)},有效阳光:{load_user_all_sun(target_user_id) - load_user_all_rain(target_user_id)}"
+        f"[你在本群]\n"
+        f"阳光:{user_sun},雨水:{user_rain},有效阳光:{user_sun - user_rain}\n"
+        f"[你在全服]\n"
+        f"阳光:{user_all_sun},雨水:{user_all_rain},有效阳光:{user_all_sun - user_all_rain}\n"
+        f"[全服数据]\n"
+        f"阳光:{all_sun},雨水:{all_rain},有效阳光:{all_sun - all_rain}\n"
+        f"[上次操作时间]\n"
+        f"{last_operation_time}\n"
+        f"[是否在奇遇]\n"
+        f"{is_join_event}"
     )
     await send_group_msg(websocket, group_id, content)
 
