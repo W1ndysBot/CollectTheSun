@@ -207,30 +207,14 @@ def update_cd(group_id, user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
-        (group_id, user_id),
+        """
+        INSERT INTO collect_the_sun (group_id, user_id, time)
+        VALUES (?, ?, ?)
+        ON CONFLICT(group_id, user_id)
+        DO UPDATE SET time = excluded.time;
+        """,
+        (group_id, user_id, time),
     )
-    if cursor.fetchone() is None:
-        cursor.execute(
-            "INSERT INTO collect_the_sun (group_id, user_id, time) VALUES (?, ?, ?)",
-            (group_id, user_id, time),
-        )
-    else:
-        cursor.execute(
-            "SELECT 1 FROM collect_the_sun WHERE group_id = ? AND user_id = ?",
-            (group_id, user_id),
-        )
-        if cursor.fetchone() is None:
-            cursor.execute(
-                "INSERT INTO collect_the_sun (group_id, user_id, time) VALUES (?, ?, ?)",
-                (group_id, user_id, time),
-            )
-        else:
-            cursor.execute(
-                "UPDATE collect_the_sun SET time = ? WHERE group_id = ? AND user_id = ?",
-                (time, group_id, user_id),
-            )
-    # logging.info(f"更新用户{user_id}在群{group_id}的CD:{time}")
     conn.commit()
     conn.close()
 
@@ -252,7 +236,6 @@ def update_sun(group_id, user_id, sun_count):
         """,
         (group_id, user_id, total_sun_count),
     )
-    # logging.info(f"更新用户{user_id}在群{group_id}的阳光:{total_sun_count}")
     conn.commit()
     conn.close()
     return True
@@ -285,8 +268,13 @@ def join_event(group_id, user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE collect_the_sun SET is_join = ? WHERE group_id = ? AND user_id = ?",
-        (True, group_id, user_id),
+        """
+        INSERT INTO collect_the_sun (group_id, user_id, is_join)
+        VALUES (?, ?, ?)
+        ON CONFLICT(group_id, user_id)
+        DO UPDATE SET is_join = excluded.is_join;
+        """,
+        (group_id, user_id, True),
     )
     conn.commit()
     conn.close()
@@ -298,8 +286,13 @@ def quit_event(group_id, user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE collect_the_sun SET is_join = ? WHERE group_id = ? AND user_id = ?",
-        (False, group_id, user_id),
+        """
+        INSERT INTO collect_the_sun (group_id, user_id, is_join)
+        VALUES (?, ?, ?)
+        ON CONFLICT(group_id, user_id)
+        DO UPDATE SET is_join = excluded.is_join;
+        """,
+        (group_id, user_id, False),
     )
     conn.commit()
     conn.close()
@@ -406,7 +399,13 @@ def get_top_three_sun(group_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT user_id, (sun_count - rain_count) as effective_sun FROM collect_the_sun WHERE group_id = ? ORDER BY effective_sun DESC LIMIT 3",
+        """
+        SELECT user_id, (sun_count - rain_count) as effective_sun 
+        FROM collect_the_sun 
+        WHERE group_id = ? 
+        ORDER BY effective_sun DESC 
+        LIMIT 3
+        """,
         (group_id,),
     )
     result = cursor.fetchall()
@@ -419,10 +418,16 @@ def get_top_three_sun_all():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT user_id, (sun_count - rain_count) as effective_sun FROM collect_the_sun ORDER BY effective_sun DESC LIMIT 3",
+        """
+        SELECT user_id, (sun_count - rain_count) as effective_sun 
+        FROM collect_the_sun 
+        ORDER BY effective_sun DESC 
+        LIMIT 3
+        """
     )
     result = cursor.fetchall()
     conn.close()
+    logging.info(f"全服有效阳光前三的用户:{result}")
     return result
 
 
@@ -431,7 +436,13 @@ def get_top_three_group_sun():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT group_id, SUM(sun_count - rain_count) as effective_sun FROM collect_the_sun GROUP BY group_id ORDER BY effective_sun DESC LIMIT 3",
+        """
+        SELECT group_id, SUM(sun_count - rain_count) as effective_sun 
+        FROM collect_the_sun 
+        GROUP BY group_id 
+        ORDER BY effective_sun DESC 
+        LIMIT 3
+        """
     )
     result = cursor.fetchall()
     conn.close()
@@ -512,18 +523,14 @@ async def check_user_info(
     user_rain = load_user_rain(group_id, target_user_id)
     user_all_sun = load_user_all_sun(target_user_id)
     user_all_rain = load_user_all_rain(target_user_id)
-    all_sun = load_all_sun()
-    all_rain = load_all_rain()
     is_join_event = load_user_join_event(group_id, target_user_id)
     last_operation_time = load_user_last_operation_time(group_id, target_user_id)
     content = (
         f"[CQ:reply,id={message_id}]"
-        f"[你在本群]\n"
+        f"[{target_user_id}在本群]\n"
         f"阳光:{user_sun},雨水:{user_rain},有效阳光:{user_sun - user_rain}\n"
-        f"[你在全服]\n"
+        f"[{target_user_id}在全服]\n"
         f"阳光:{user_all_sun},雨水:{user_all_rain},有效阳光:{user_all_sun - user_all_rain}\n"
-        f"[全服数据]\n"
-        f"阳光:{all_sun},雨水:{all_rain},有效阳光:{all_sun - all_rain}\n"
         f"[上次操作时间]\n"
         f"{last_operation_time}\n"
         f"[是否在奇遇]\n"
