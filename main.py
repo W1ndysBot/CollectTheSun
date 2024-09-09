@@ -234,11 +234,12 @@ def update_cd(group_id, user_id):
     conn.commit()
     conn.close()
 
+
 # 更新用户在某群的阳光
 def update_sun(group_id, user_id, sun_count):
     current_sun_count = load_user_sun(group_id, user_id)  # 获取当前阳光数量
     total_sun_count = max(0, current_sun_count + sun_count)  # 确保阳光数量不为负数
-    
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     # 使用 UPSERT 来插入或更新数据
@@ -261,7 +262,7 @@ def update_sun(group_id, user_id, sun_count):
 def update_rain(group_id, user_id, rain_count):
     current_rain_count = load_user_rain(group_id, user_id)  # 获取当前雨水数量
     total_rain_count = max(0, current_rain_count + rain_count)  # 确保雨水数量不为负数
-    
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     # 使用 UPSERT 来插入或更新数据
@@ -750,6 +751,10 @@ async def handle_CollectTheSun_group_message(websocket, msg):
 
         # 检测日期,军训已结束,不用再收集阳光了
         if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+            return
+
+        # 关闭的群
+        if group_id in ["724133968"]:
             return
 
         # 菜单
