@@ -762,6 +762,54 @@ async def give_rain(websocket, group_id, user_id, target_user_id, amount, messag
         )
 
 
+# root 管理员命令，可以实现增减某用户的阳光、雨水，重置某用户CD，修改某用户的奇遇情况
+async def root_command(websocket, group_id, user_id, raw_message, message_id):
+
+    # 增减阳光
+    if raw_message.startswith("sunadd"):
+        if user_id not in owner_id:
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]你没有权限执行此命令",
+            )
+            return
+        raw_message = raw_message.replace(" ", "")
+        match = re.search(r"\[CQ:at,qq=(\d+)\](\d+)", raw_message)
+        if match:
+            target_user_id = match.group(1)
+            sun_count = int(match.group(2))
+            update_sun(group_id, target_user_id, sun_count)
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]成功给用户{target_user_id}添加{sun_count}颗阳光",
+            )
+            return
+
+    # 增减雨水
+    if raw_message.startswith("rainadd"):
+        if user_id not in owner_id:
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]你没有权限执行此命令",
+            )
+            return
+        raw_message = raw_message.replace(" ", "")
+        match = re.search(r"\[CQ:at,qq=(\d+)\](\d+)", raw_message)
+        if match:
+            target_user_id = match.group(1)
+            rain_count = int(match.group(2))
+            update_rain(group_id, target_user_id, rain_count)
+            await send_group_msg(
+                websocket,
+                group_id,
+                f"[CQ:reply,id={message_id}]成功给用户{target_user_id}添加{rain_count}滴雨水",
+            )
+            return
+
+
 # 群消息处理函数
 async def handle_CollectTheSun_group_message(websocket, msg):
     # 确保数据目录存在
@@ -951,6 +999,9 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                     websocket, group_id, user_id, target_user_id, amount, message_id
                 )
                 return
+
+        # root 管理员命令，可以实现增减某用户的阳光、雨水，重置某用户CD，修改某用户的奇遇情况
+        await root_command(websocket, group_id, user_id, raw_message, message_id)
 
         # 如果不是上述命令,进入奇遇事件
         await random_add(websocket, group_id, user_id, message_id)
