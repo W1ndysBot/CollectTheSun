@@ -870,6 +870,13 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 steal_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]", raw_message)
                 if steal_sun_match:
                     target_user_id = steal_sun_match.group(1)
+                    if target_user_id == user_id:
+                        await send_group_msg(
+                            websocket,
+                            group_id,
+                            f"[CQ:reply,id={message_id}]你偷自己的阳光干嘛？",
+                        )
+                        return
                     await steal_sun(
                         websocket, group_id, user_id, target_user_id, message_id
                     )
@@ -888,6 +895,13 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             if not is_in_cd(group_id, user_id):
                 if steal_rain_match:
                     target_user_id = steal_rain_match.group(1)
+                    if target_user_id == user_id:
+                        await send_group_msg(
+                            websocket,
+                            group_id,
+                            f"[CQ:reply,id={message_id}]你偷自己的雨水干嘛？",
+                        )
+                        return
                     await steal_rain(
                         websocket, group_id, user_id, target_user_id, message_id
                     )
@@ -906,6 +920,13 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             give_sun_match = re.search(r"\[CQ:at,qq=(\d+)\]([0-9]+)", raw_message)
             if give_sun_match:
                 target_user_id = give_sun_match.group(1)
+                if target_user_id == user_id:
+                    await send_group_msg(
+                        websocket,
+                        group_id,
+                        f"[CQ:reply,id={message_id}]你送自己的阳光干嘛？",
+                    )
+                    return
                 amount = int(give_sun_match.group(2))
                 await give_sun(
                     websocket, group_id, user_id, target_user_id, amount, message_id
@@ -918,6 +939,13 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             give_rain_match = re.search(r"\[CQ:at,qq=(\d+)\]([0-9]+)", raw_message)
             if give_rain_match:
                 target_user_id = give_rain_match.group(1)
+                if target_user_id == user_id:
+                    await send_group_msg(
+                        websocket,
+                        group_id,
+                        f"[CQ:reply,id={message_id}]你送自己的雨水干嘛？",
+                    )
+                    return
                 amount = int(give_rain_match.group(2))
                 await give_rain(
                     websocket, group_id, user_id, target_user_id, amount, message_id
