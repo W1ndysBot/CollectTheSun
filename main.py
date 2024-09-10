@@ -652,23 +652,22 @@ async def steal_sun(websocket, group_id, user_id, target_user_id, message_id):
     lose_amount = int(steal_sun_user * random.uniform(0.1, 0.3))
 
     if random.random() < 0.5:  # 50% 成功率
-        if update_sun(group_id, user_id, steal_amount) and update_sun(
-            group_id, target_user_id, -lose_amount
-        ):
-            update_cd(group_id, user_id)
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}颗阳光(冷却60秒)",
-            )
+        update_sun(group_id, user_id, steal_amount)
+        update_sun(group_id, target_user_id, -steal_amount)
+        update_cd(group_id, user_id)
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}颗阳光(冷却60秒)",
+        )
     else:
-        if update_sun(group_id, user_id, -lose_amount):
-            update_cd(group_id, user_id)
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}颗阳光(冷却60秒)",
-            )
+        update_sun(group_id, user_id, -lose_amount)
+        update_cd(group_id, user_id)
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}颗阳光(冷却60秒)",
+        )
 
 
 # 抢夺雨水
@@ -691,23 +690,22 @@ async def steal_rain(websocket, group_id, user_id, target_user_id, message_id):
     lose_amount = int(steal_rain_user * random.uniform(0.1, 0.3))
 
     if random.random() < 0.5:  # 50% 成功率
-        if update_rain(group_id, user_id, steal_amount) and update_rain(
-            group_id, target_user_id, -lose_amount
-        ):
-            update_cd(group_id, user_id)
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}滴雨水(冷却60秒)",
-            )
+        update_rain(group_id, user_id, steal_amount)
+        update_rain(group_id, target_user_id, -steal_amount)
+        update_cd(group_id, user_id)
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]成功抢夺了{steal_amount}滴雨水(冷却60秒)",
+        )
     else:
-        if update_rain(group_id, user_id, -lose_amount):
-            update_cd(group_id, user_id)
-            await send_group_msg(
-                websocket,
-                group_id,
-                f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}滴雨水(冷却60秒)",
-            )
+        update_rain(group_id, user_id, -lose_amount)
+        update_cd(group_id, user_id)
+        await send_group_msg(
+            websocket,
+            group_id,
+            f"[CQ:reply,id={message_id}]抢夺失败,损失了{lose_amount}滴雨水(冷却60秒)",
+        )
 
 
 # 赠送阳光
