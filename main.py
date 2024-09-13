@@ -824,10 +824,6 @@ async def handle_CollectTheSun_group_message(websocket, msg):
         # 初始化数据库
         init_database()
 
-        # 检测日期,军训已结束,不用再收集阳光了
-        if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
-            return
-
         # 关闭的群
         if group_id in ["724133968"]:
             return
@@ -844,6 +840,12 @@ async def handle_CollectTheSun_group_message(websocket, msg):
             or raw_message == "种太阳"
         ):
             if not is_in_cd(group_id, user_id):
+                # 检测日期,军训已结束,不用再收集阳光了
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                    await send_group_msg(
+                        websocket, group_id, "军训已结束,不用再收集阳光了"
+                    )
+                    return
                 await collect_sun(websocket, group_id, user_id, message_id)
                 return
             else:
@@ -857,6 +859,12 @@ async def handle_CollectTheSun_group_message(websocket, msg):
         # 收集雨水
         if raw_message == "收集雨水" or raw_message == "rain":
             if not is_in_cd(group_id, user_id):
+                # 检测日期,军训已结束,不用再收集雨水了
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                    await send_group_msg(
+                        websocket, group_id, "军训已结束,不用再收集雨水了"
+                    )
+                    return
                 await collect_rain(websocket, group_id, user_id, message_id)
                 return
             else:
@@ -925,6 +933,13 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                             f"[CQ:reply,id={message_id}]你偷自己的阳光干嘛？",
                         )
                         return
+
+                    #  检测日期,军训已结束,不用再收集阳光了
+                    if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                        await send_group_msg(
+                            websocket, group_id, "军训已结束,不用再抢夺阳光了"
+                        )
+                        return
                     await steal_sun(
                         websocket, group_id, user_id, target_user_id, message_id
                     )
@@ -950,6 +965,14 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                             f"[CQ:reply,id={message_id}]你偷自己的雨水干嘛？",
                         )
                         return
+
+                    #  检测日期,军训已结束,不用再收集阳光了
+                    if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                        await send_group_msg(
+                            websocket, group_id, "军训已结束,不用再抢夺雨水了"
+                        )
+                        return
+
                     await steal_rain(
                         websocket, group_id, user_id, target_user_id, message_id
                     )
@@ -976,6 +999,14 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                     )
                     return
                 amount = int(give_sun_match.group(2))
+
+                # 检测日期,军训已结束,不用再收集阳光了
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                    await send_group_msg(
+                        websocket, group_id, "军训已结束,不用再赠送阳光了"
+                    )
+                    return
+
                 await give_sun(
                     websocket, group_id, user_id, target_user_id, amount, message_id
                 )
@@ -995,6 +1026,14 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                     )
                     return
                 amount = int(give_rain_match.group(2))
+
+                # 检测日期,军训已结束,不用再收集阳光了
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                    await send_group_msg(
+                        websocket, group_id, "军训已结束,不用再赠送雨水了"
+                    )
+                    return
+
                 await give_rain(
                     websocket, group_id, user_id, target_user_id, amount, message_id
                 )
@@ -1002,6 +1041,10 @@ async def handle_CollectTheSun_group_message(websocket, msg):
 
         # root 管理员命令，可以实现增减某用户的阳光、雨水，重置某用户CD，修改某用户的奇遇情况
         await root_command(websocket, group_id, user_id, raw_message, message_id)
+
+        # 检测日期,军训已结束,不用再收集阳光了
+        if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+            return
 
         # 如果不是上述命令,进入奇遇事件
         await random_add(websocket, group_id, user_id, message_id)
