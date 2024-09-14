@@ -324,7 +324,7 @@ async def sun_menu(websocket, group_id, message_id):
 # 随机收集阳光
 async def collect_sun(websocket, group_id, user_id, message_id):
     # 检测日期
-    if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+    if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
         await send_group_msg(
             websocket,
             group_id,
@@ -360,7 +360,7 @@ async def collect_sun(websocket, group_id, user_id, message_id):
 # 随机收集雨水
 async def collect_rain(websocket, group_id, user_id, message_id):
     # 检测日期
-    if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+    if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
         await send_group_msg(
             websocket,
             group_id,
@@ -841,7 +841,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
         ):
             if not is_in_cd(group_id, user_id):
                 # 检测日期,军训已结束,不用再收集阳光了
-                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
                     await send_group_msg(
                         websocket, group_id, "军训已结束,不用再收集阳光了"
                     )
@@ -860,7 +860,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
         if raw_message == "收集雨水" or raw_message == "rain":
             if not is_in_cd(group_id, user_id):
                 # 检测日期,军训已结束,不用再收集雨水了
-                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
                     await send_group_msg(
                         websocket, group_id, "军训已结束,不用再收集雨水了"
                     )
@@ -935,7 +935,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                         return
 
                     #  检测日期,军训已结束,不用再收集阳光了
-                    if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                    if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
                         await send_group_msg(
                             websocket, group_id, "军训已结束,不用再抢夺阳光了"
                         )
@@ -967,7 +967,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                         return
 
                     #  检测日期,军训已结束,不用再收集阳光了
-                    if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                    if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
                         await send_group_msg(
                             websocket, group_id, "军训已结束,不用再抢夺雨水了"
                         )
@@ -1001,7 +1001,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 amount = int(give_sun_match.group(2))
 
                 # 检测日期,军训已结束,不用再收集阳光了
-                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
                     await send_group_msg(
                         websocket, group_id, "军训已结束,不用再赠送阳光了"
                     )
@@ -1028,7 +1028,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
                 amount = int(give_rain_match.group(2))
 
                 # 检测日期,军训已结束,不用再收集阳光了
-                if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+                if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
                     await send_group_msg(
                         websocket, group_id, "军训已结束,不用再赠送雨水了"
                     )
@@ -1043,7 +1043,7 @@ async def handle_CollectTheSun_group_message(websocket, msg):
         await root_command(websocket, group_id, user_id, raw_message, message_id)
 
         # 检测日期,军训已结束,不用再收集阳光了
-        if datetime.datetime.now() > datetime.datetime(2024, 9, 14):
+        if datetime.datetime.now() > datetime.datetime(2024, 9, 15):
             return
 
         # 如果不是上述命令,进入奇遇事件
