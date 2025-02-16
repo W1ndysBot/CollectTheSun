@@ -1053,3 +1053,63 @@ async def handle_CollectTheSun_group_message(websocket, msg):
     except Exception as e:
         logging.error(f"处理CollectTheSun群消息失败: {e}")
         return
+
+
+# 统一事件处理入口
+async def handle_events(websocket, msg):
+    """统一事件处理入口"""
+    try:
+        # 处理回调事件
+        if msg.get("status") == "ok":
+            return
+
+        post_type = msg.get("post_type")
+
+        # 处理元事件
+        if post_type == "meta_event":
+            return
+
+        # 处理消息事件
+        elif post_type == "message":
+            message_type = msg.get("message_type")
+            if message_type == "group":
+                group_id = str(msg.get("group_id", ""))
+                message_id = str(msg.get("message_id", ""))
+                raw_message = str(msg.get("raw_message", ""))
+                user_id = str(msg.get("user_id", ""))
+                role = str(msg.get("sender", {}).get("role", ""))
+
+                # 处理收集阳光相关命令
+                await handle_CollectTheSun_group_message(websocket, msg)
+            elif message_type == "private":
+                return
+
+        # 处理通知事件
+        elif post_type == "notice":
+            return
+
+    except Exception as e:
+        error_type = {
+            "message": "消息",
+            "notice": "通知",
+            "request": "请求",
+            "meta_event": "元事件",
+        }.get(post_type, "未知")
+
+        logging.error(f"处理CollectTheSun{error_type}事件失败: {e}")
+
+        # 发送错误提示
+        if post_type == "message":
+            message_type = msg.get("message_type")
+            if message_type == "group":
+                await send_group_msg(
+                    websocket,
+                    msg.get("group_id"),
+                    f"处理CollectTheSun{error_type}事件失败，错误信息：{str(e)}",
+                )
+            elif message_type == "private":
+                await send_private_msg(
+                    websocket,
+                    msg.get("user_id"),
+                    f"处理CollectTheSun{error_type}事件失败，错误信息：{str(e)}",
+                )
